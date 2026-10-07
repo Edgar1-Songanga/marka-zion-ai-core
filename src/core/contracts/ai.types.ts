@@ -1,4 +1,4 @@
-export type AiSpace = 'zion' | 'marka';
+export type AiSpace = string;
 
 export type AiOperation = 'CHAT' | 'TOOL_CALL' | 'KNOWLEDGE_QUERY';
 
