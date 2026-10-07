@@ -29,6 +29,15 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
+      - name: Dependency vulnerability audit
+        run: npm audit --audit-level=high
+
+      - name: Generate SBOM
+        run: npm sbom --sbom-format=cyclonedx > sbom.json
+
+      - name: Verify SBOM
+        run: test -s sbom.json
+
       - name: Typecheck
         run: npm run typecheck
 
