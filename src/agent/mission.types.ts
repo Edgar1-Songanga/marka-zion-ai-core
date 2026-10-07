@@ -10,6 +10,8 @@ export interface MissionRequest {
   readonly accessLevel: AgentAccessLevel;
   readonly requiredSkills?: readonly string[];
   readonly preferredFamilies?: readonly string[];
+  readonly maxAgents?: number;
+  readonly maxBudgetTokens?: number;
   readonly executionMode?: 'ADVISORY' | 'EXECUTION' | 'AUTONOMOUS';
 }
 
