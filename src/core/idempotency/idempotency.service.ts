@@ -80,6 +80,9 @@ export class IdempotencyService {
 
     if (!acquired.acquired) {
       const row = acquired.row;
+      if (!row) {
+        throw new ServiceUnavailableException('Idempotency acquisition state is unavailable');
+      }
 
       if (row.status === 'COMPLETED') {
         return row.response_json as T;
