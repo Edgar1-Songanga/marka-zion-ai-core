@@ -12,6 +12,8 @@ import { AgentFactoryService } from './agent-factory.service';
 import { SkillRegistryService } from './skill-registry.service';
 import { MissionOrchestratorService } from './mission-orchestrator.service';
 import { MissionRepositoryService } from './mission-repository.service';
+import { MissionTaskRepositoryService } from './mission-task-repository.service';
+import { MissionExecutionService } from './mission-execution.service';
 
 @Global()
 @Module({
@@ -23,6 +25,8 @@ import { MissionRepositoryService } from './mission-repository.service';
     SkillRegistryService,
     MissionOrchestratorService,
     MissionRepositoryService,
+    MissionTaskRepositoryService,
+    MissionExecutionService,
   ],
   exports: [
     AgentOrchestratorService,
@@ -31,6 +35,8 @@ import { MissionRepositoryService } from './mission-repository.service';
     SkillRegistryService,
     MissionOrchestratorService,
     MissionRepositoryService,
+    MissionTaskRepositoryService,
+    MissionExecutionService,
   ],
 })
 export class AgentOrchestratorModule {}
