@@ -35,11 +35,27 @@ export class AiSecurityService {
       throw new BadRequestException('AI product space is not active');
     }
 
+    if (!request.context.tenantId?.trim()) {
+      throw new BadRequestException('tenantId is required');
+    }
+
+    if (request.context.tenantId.length > 128) {
+      throw new BadRequestException('tenantId is invalid');
+    }
+
+    if (request.context.userId && request.context.userId.length > 128) {
+      throw new BadRequestException('userId is invalid');
+    }
+
     if (!['CHAT', 'TOOL_CALL', 'KNOWLEDGE_QUERY'].includes(request.operation)) {
       throw new BadRequestException('unsupported AI operation');
     }
 
-    if (request.context.roles.some((role) => role.length > 100)) {
+    if (
+      request.context.roles.some(
+        (role) => !role.trim() || role.length > 100,
+      )
+    ) {
       throw new BadRequestException('invalid role');
     }
   }
