@@ -53,3 +53,6 @@ jobs:
           test -f dist/infrastructure/postgres/migrations/002_production_hardening.sql
           test -f dist/infrastructure/postgres/migrations/003_enterprise_hardening.sql
           test -f dist/infrastructure/postgres/migrations/004_daily_quota_hardening.sql
+          test -f dist/infrastructure/postgres/migrations/005_mission_runtime.sql
+          test -f dist/infrastructure/postgres/migrations/006_mission_tasks.sql
+          test -f dist/infrastructure/postgres/migrations/007_task_leases.sql
