@@ -54,6 +54,7 @@ export class ToolRegistryService {
 
     if (
       tool.permission === 'WRITE' &&
+      context.accessLevel !== 'OWNER' &&
       !context.roles.includes('ai:write')
     ) {
       throw new ForbiddenException('AI write permission required');
