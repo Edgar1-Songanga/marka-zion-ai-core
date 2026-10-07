@@ -233,6 +233,10 @@ export class HttpsProductConnector implements ProductConnector {
     if (isIP(value) === 6) {
       const normalized = value.toLowerCase();
 
+      if (normalized.startsWith('::ffff:')) {
+        return this.isPrivateIp(normalized.slice(7));
+      }
+
       return (
         normalized === '::1' ||
         normalized === '::' ||
