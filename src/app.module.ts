@@ -15,6 +15,7 @@ import { MemoryModule } from './memory/memory.module';
 import { ModelLayerModule } from './model-layer/model-layer.module';
 import { SpacePolicyModule } from './model-layer/space-policy.module';
 import { AiGatewayModule } from './ai-gateway/ai-gateway.module';
+import { AgentOrchestratorModule } from './agent/agent-orchestrator.module';
 import { ToolEngineModule } from './tools/tool-engine.module';
 import { ProductConnectorModule } from './connectors/product-connector.module';
 import { HttpsProductConnectorModule } from './connectors/https-product-connector.module';
@@ -43,6 +44,7 @@ import { ToolApprovalModule } from './approvals/tool-approval.module';
     HttpsProductConnectorModule,
     HealthModule,
     EvaluationModule,
+    AgentOrchestratorModule,
     AiGatewayModule,
   ],
 })
