@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { CoreConfigService } from '../core/config/core-config.service';
 import { AiAuditService } from '../core/audit/ai-audit.service';
+import { IdempotencyService } from '../core/idempotency/idempotency.service';
 import { AiToolContext } from './tool.types';
 import { ToolRegistryService } from './tool-registry.service';
 
@@ -14,6 +15,7 @@ export interface ToolExecutionRequest {
   readonly toolName: string;
   readonly input: unknown;
   readonly context: AiToolContext;
+  readonly idempotencyKey?: string;
 }
 
 export interface ToolExecutionResult {
@@ -29,6 +31,7 @@ export class ToolExecutionService {
     private readonly registry: ToolRegistryService,
     private readonly audit: AiAuditService,
     private readonly config: CoreConfigService,
+    private readonly idempotency: IdempotencyService,
   ) {}
 
   async execute(request: ToolExecutionRequest): Promise<ToolExecutionResult> {
@@ -44,78 +47,103 @@ export class ToolExecutionService {
       throw new BadRequestException('Invalid tool input');
     }
 
-    this.audit.recordToolInvocation({
-      event: 'AI_TOOL_STARTED',
-      requestId: request.requestId,
-      correlationId: request.context.correlationId,
-      space: request.context.space,
-      operation: 'TOOL_CALL',
-      userId: request.context.userId,
-      tenantId: request.context.tenantId,
-      toolName: name,
-      permission: tool.permission,
-      status: 'STARTED',
-    });
-
-    try {
-      const data = await this.withTimeout(
-        tool.execute(request.input, request.context),
-        this.config.requestTimeoutMs,
+    if (tool.permission === 'WRITE' && !request.idempotencyKey?.trim()) {
+      throw new BadRequestException(
+        'Idempotency key is required for write-capable AI tools',
       );
-
-      let serialized: string;
-      try {
-        serialized = JSON.stringify(data);
-      } catch {
-        throw new BadRequestException('Tool output is not serializable');
-      }
-
-      if (serialized.length > this.config.maxToolOutputCharacters) {
-        throw new BadRequestException('Tool output exceeds configured limit');
-      }
-
-      this.audit.recordToolInvocation({
-        event: 'AI_TOOL_COMPLETED',
-        requestId: request.requestId,
-        correlationId: request.context.correlationId,
-        space: request.context.space,
-        operation: 'TOOL_CALL',
-        userId: request.context.userId,
-        tenantId: request.context.tenantId,
-        toolName: name,
-        permission: tool.permission,
-        status: 'COMPLETED',
-      });
-
-      return {
-        requestId: request.requestId,
-        toolName: name,
-        status: 'COMPLETED',
-        data,
-      };
-    } catch (error) {
-      this.audit.recordToolInvocation({
-        event: 'AI_TOOL_FAILED',
-        requestId: request.requestId,
-        correlationId: request.context.correlationId,
-        space: request.context.space,
-        operation: 'TOOL_CALL',
-        userId: request.context.userId,
-        tenantId: request.context.tenantId,
-        toolName: name,
-        permission: tool.permission,
-        status: 'FAILED',
-      });
-
-      if (
-        error instanceof BadRequestException ||
-        error instanceof GatewayTimeoutException
-      ) {
-        throw error;
-      }
-
-      throw new InternalServerErrorException('AI tool execution failed');
     }
+
+    const executeOnce = async (): Promise<ToolExecutionResult> => {
+      this.audit.recordToolInvocation({
+        event: 'AI_TOOL_STARTED',
+        requestId: request.requestId,
+        correlationId: request.context.correlationId,
+        space: request.context.space,
+        operation: 'TOOL_CALL',
+        userId: request.context.userId,
+        tenantId: request.context.tenantId,
+        toolName: name,
+        permission: tool.permission,
+        status: 'STARTED',
+      });
+
+      try {
+        const data = await this.withTimeout(
+          tool.execute(request.input, request.context),
+          this.config.requestTimeoutMs,
+        );
+
+        let serialized: string;
+        try {
+          serialized = JSON.stringify(data);
+        } catch {
+          throw new BadRequestException('Tool output is not serializable');
+        }
+
+        if (serialized.length > this.config.maxToolOutputCharacters) {
+          throw new BadRequestException('Tool output exceeds configured limit');
+        }
+
+        this.audit.recordToolInvocation({
+          event: 'AI_TOOL_COMPLETED',
+          requestId: request.requestId,
+          correlationId: request.context.correlationId,
+          space: request.context.space,
+          operation: 'TOOL_CALL',
+          userId: request.context.userId,
+          tenantId: request.context.tenantId,
+          toolName: name,
+          permission: tool.permission,
+          status: 'COMPLETED',
+        });
+
+        return {
+          requestId: request.requestId,
+          toolName: name,
+          status: 'COMPLETED',
+          data,
+        };
+      } catch (error) {
+        this.audit.recordToolInvocation({
+          event: 'AI_TOOL_FAILED',
+          requestId: request.requestId,
+          correlationId: request.context.correlationId,
+          space: request.context.space,
+          operation: 'TOOL_CALL',
+          userId: request.context.userId,
+          tenantId: request.context.tenantId,
+          toolName: name,
+          permission: tool.permission,
+          status: 'FAILED',
+        });
+
+        if (
+          error instanceof BadRequestException ||
+          error instanceof GatewayTimeoutException
+        ) {
+          throw error;
+        }
+
+        throw new InternalServerErrorException('AI tool execution failed');
+      }
+    };
+
+    if (tool.permission === 'WRITE') {
+      return this.idempotency.run(
+        `tool:${request.context.space}:${name}`,
+        request.idempotencyKey!,
+        {
+          space: request.context.space,
+          tenantId: request.context.tenantId ?? null,
+          userId: request.context.userId ?? null,
+          toolName: name,
+          input: request.input,
+        },
+        executeOnce,
+      );
+    }
+
+    return executeOnce();
   }
 
   private async withTimeout<T>(
