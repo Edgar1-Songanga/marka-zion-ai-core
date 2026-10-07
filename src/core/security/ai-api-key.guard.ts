@@ -107,7 +107,11 @@ export class AiApiKeyGuard implements CanActivate {
       throw new UnauthorizedException('Invalid AI context token');
     }
 
-    const [encodedPayload, encodedSignature] = parts;
+    const encodedPayload = parts[0];
+    const encodedSignature = parts[1];
+    if (!encodedPayload || !encodedSignature) {
+      throw new UnauthorizedException('Invalid AI context token');
+    }
     const expectedSignature = createHmac('sha256', secret)
       .update(encodedPayload)
       .digest();
