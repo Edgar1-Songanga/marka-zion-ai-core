@@ -7,29 +7,56 @@ export class ToolRegistryService {
   private readonly tools = new Map<string, AiToolDefinition>();
 
   register<TInput, TOutput>(tool: AiToolDefinition<TInput, TOutput>): void {
-    this.tools.set(tool.name, tool as AiToolDefinition);
+    const name = tool.name.trim();
+
+    if (!name || name.length > 128) {
+      throw new Error('AI tool name must contain 1-128 characters');
+    }
+
+    if (tool.spaces.length === 0) {
+      throw new Error('AI tool must declare at least one AI space');
+    }
+
+    if (this.tools.has(name)) {
+      throw new Error(`AI tool already registered: ${name}`);
+    }
+
+    this.tools.set(name, {
+      ...tool,
+      name,
+    } as AiToolDefinition);
   }
 
-  async execute(
-    name: string,
-    input: unknown,
-    context: AiToolContext,
-  ): Promise<unknown> {
-    const tool = this.tools.get(name);
+  get(name: string): AiToolDefinition {
+    const tool = this.tools.get(name.trim());
 
     if (!tool) {
       throw new NotFoundException(`AI tool not found: ${name}`);
     }
 
+    return tool;
+  }
+
+  authorize(name: string, context: AiToolContext): AiToolDefinition {
+    const tool = this.get(name);
+
     if (!tool.spaces.includes(context.space)) {
       throw new ForbiddenException('Tool is not available in this AI space');
     }
 
-    if (tool.permission === 'SENSITIVE_WRITE' && !context.roles.includes('ai:sensitive-write')) {
-      throw new ForbiddenException('Sensitive AI tool permission required');
+    if (tool.permission === 'SENSITIVE_WRITE') {
+      throw new ForbiddenException('Sensitive AI tool execution requires approval');
     }
 
-    return tool.execute(input, context);
+    if (tool.permission === 'WRITE' && !context.roles.includes('ai:write')) {
+      throw new ForbiddenException('AI write permission required');
+    }
+
+    if (tool.permission !== 'READ' && !context.userId) {
+      throw new ForbiddenException('User context required for write-capable AI tools');
+    }
+
+    return tool;
   }
 
   list(space: AiSpace): readonly string[] {
