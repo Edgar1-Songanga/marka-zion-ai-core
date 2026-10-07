@@ -155,12 +155,17 @@ export class ToolApprovalService {
 
     const nextStatus = approved ? 'APPROVED' : 'REJECTED';
 
-    await this.db.query(
+    const decision = await this.db.query(
       `UPDATE ai_approval_requests
        SET status = $2, decided_at = NOW(), reason = $3
-       WHERE id = $1 AND status = 'PENDING'`,
+       WHERE id = $1 AND status = 'PENDING'
+       RETURNING id`,
       [id, nextStatus, `decided_by:${approverUserId}`],
     );
+
+    if (decision.rowCount !== 1) {
+      throw new BadRequestException('AI approval request was already decided');
+    }
 
     return {
       id: row.id,
@@ -214,7 +219,19 @@ export class ToolApprovalService {
         throw new BadRequestException('AI approval request has expired');
       }
 
-      return row;
+      const claimed = await client.query<ApprovalRow>(
+        `UPDATE ai_approval_requests
+         SET status = 'EXECUTING', executed_at = NULL
+         WHERE id = $1 AND status = 'APPROVED'
+         RETURNING id, space, tenant_id, user_id, tool_name, input_json, status, expires_at`,
+        [id],
+      );
+
+      if (claimed.rowCount !== 1) {
+        throw new BadRequestException('AI approval request is already executing');
+      }
+
+      return claimed.rows[0];
     });
 
     try {
@@ -236,7 +253,7 @@ export class ToolApprovalService {
       await this.db.query(
         `UPDATE ai_approval_requests
          SET status = 'EXECUTED', executed_at = NOW()
-         WHERE id = $1 AND status = 'APPROVED'`,
+         WHERE id = $1 AND status = 'EXECUTING'`,
         [id],
       );
 
@@ -245,7 +262,7 @@ export class ToolApprovalService {
       await this.db.query(
         `UPDATE ai_approval_requests
          SET status = 'FAILED', executed_at = NOW()
-         WHERE id = $1 AND status = 'APPROVED'`,
+         WHERE id = $1 AND status = 'EXECUTING'`,
         [id],
       );
 
