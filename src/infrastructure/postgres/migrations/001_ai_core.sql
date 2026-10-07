@@ -121,3 +121,13 @@ CREATE INDEX IF NOT EXISTS ai_knowledge_search_idx
 
 CREATE INDEX IF NOT EXISTS ai_knowledge_scope_idx
   ON ai_knowledge_documents (tenant_id, space);
+
+
+CREATE TABLE IF NOT EXISTS ai_product_spaces (
+  id TEXT PRIMARY KEY,
+  display_name TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('ACTIVE', 'SUSPENDED')),
+  capabilities JSONB NOT NULL DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
