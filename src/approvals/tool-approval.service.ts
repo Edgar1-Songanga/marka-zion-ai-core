@@ -185,6 +185,7 @@ export class ToolApprovalService {
     id: string,
     actorUserId: string,
     actorTenantId: string,
+    actorAccessLevel: AiToolContext['accessLevel'],
   ) {
     if (!actorUserId || !actorTenantId) {
       throw new ForbiddenException('Authenticated actor context is required');
@@ -245,6 +246,10 @@ export class ToolApprovalService {
       return claimed.rows[0];
     });
 
+    if (!result) {
+      throw new BadRequestException('AI approval execution claim was not created');
+    }
+
     try {
       const execution = await this.execution.executeApproved({
         requestId: id,
@@ -256,6 +261,7 @@ export class ToolApprovalService {
           tenantId: result.tenant_id ?? undefined,
           userId: result.user_id ?? actorUserId,
           roles: ['ai:write'],
+          accessLevel: actorAccessLevel,
           correlationId: `approval:${id}`,
           idempotencyKey: `approval:${id}`,
         },
