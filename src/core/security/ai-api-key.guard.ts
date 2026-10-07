@@ -157,6 +157,10 @@ export class AiApiKeyGuard implements CanActivate {
     const roles = payload.roles ?? [];
 
     if (
+      !Array.isArray(roles) ||
+      (payload.userId !== undefined && (typeof payload.userId !== 'string' || payload.userId.length > 128)) ||
+      payload.space.length > 128 ||
+      payload.tenantId.length > 128 ||
       roles.some(
         (role) => typeof role !== 'string' || role.length === 0 || role.length > 100,
       )
