@@ -1,11 +1,11 @@
 import {
   BadGatewayException,
-  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ProductConnector, ProductConnectorRequest, ProductConnectorResponse } from './product-connector.types';
 import { HttpsProductConnectorOptions } from './https-product-connector.types';
+import { Injectable } from '@nestjs/common';
 
-const PRIVATE_IPV4 = /^(10\\.|127\\.|169\\\.254\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.|192\\.168\\.)/;
+const PRIVATE_IPV4 = /^(10\.|127\.|169\.254\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.)/;
 
 @Injectable()
 export class HttpsProductConnector implements ProductConnector {
