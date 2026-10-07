@@ -22,7 +22,10 @@ interface ChatCompletionResponse {
 export class VercelAiGatewayProvider implements ModelProvider {
   readonly name = 'vercel-ai-gateway';
 
-  constructor(private readonly config: CoreConfigService) {}
+  constructor(
+    private readonly config: CoreConfigService,
+    private readonly policies: SpacePolicyRegistry,
+  ) {}
 
   async generate(request: ModelGenerationRequest): Promise<ModelGenerationResponse> {
     const apiKey = process.env.AI_GATEWAY_API_KEY;
@@ -55,7 +58,9 @@ export class VercelAiGatewayProvider implements ModelProvider {
             messages: [
               {
                 role: 'system',
-                content: this.systemInstruction(request.space),
+                content:
+              request.systemInstruction?.trim() ||
+              this.policies.resolve(request.space).systemInstruction,
               },
               {
                 role: 'user',
@@ -101,11 +106,4 @@ export class VercelAiGatewayProvider implements ModelProvider {
     return (process.env.AI_GATEWAY_BASE_URL ?? 'https://ai-gateway.vercel.sh/v1').replace(/\/$/, '');
   }
 
-  private systemInstruction(space: ModelGenerationRequest['space']): string {
-    if (space === 'marka') {
-      return 'You are the MARKA AI layer. Treat MARKA deterministic services and authorized APIs as the source of truth. Never invent financial, payment, mobility, order, identity, or operational facts.';
-    }
-
-    return 'You are the ZION AI layer. Treat authorized ZION knowledge and product APIs as the source of truth. Never invent doctrine, governance, policy, citations, or official statements.';
-  }
 }
