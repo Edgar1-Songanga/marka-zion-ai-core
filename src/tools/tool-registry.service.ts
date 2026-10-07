@@ -37,23 +37,38 @@ export class ToolRegistryService {
     return tool;
   }
 
-  authorize(name: string, context: AiToolContext): AiToolDefinition {
+  authorize(
+    name: string,
+    context: AiToolContext,
+    allowApprovedSensitive = false,
+  ): AiToolDefinition {
     const tool = this.get(name);
 
     if (!tool.spaces.includes(context.space)) {
       throw new ForbiddenException('Tool is not available in this AI space');
     }
 
-    if (tool.permission === 'SENSITIVE_WRITE') {
+    if (tool.permission === 'SENSITIVE_WRITE' && !allowApprovedSensitive) {
       throw new ForbiddenException('Sensitive AI tool execution requires approval');
     }
 
-    if (tool.permission === 'WRITE' && !context.roles.includes('ai:write')) {
+    if (
+      tool.permission === 'WRITE' &&
+      !context.roles.includes('ai:write')
+    ) {
       throw new ForbiddenException('AI write permission required');
     }
 
     if (tool.permission !== 'READ' && !context.userId) {
-      throw new ForbiddenException('User context required for write-capable AI tools');
+      throw new ForbiddenException(
+        'User context required for write-capable AI tools',
+      );
+    }
+
+    if (tool.permission !== 'READ' && !context.tenantId) {
+      throw new ForbiddenException(
+        'Tenant context required for write-capable AI tools',
+      );
     }
 
     return tool;
