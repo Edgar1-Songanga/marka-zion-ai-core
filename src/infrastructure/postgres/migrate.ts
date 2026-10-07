@@ -14,7 +14,10 @@ async function main(): Promise<void> {
     ssl:
       process.env.DATABASE_SSL === 'false'
         ? false
-        : { rejectUnauthorized: false },
+        : {
+            rejectUnauthorized:
+              process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== 'false',
+          },
   });
 
   await client.connect();
