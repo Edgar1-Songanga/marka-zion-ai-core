@@ -46,6 +46,7 @@ export class ToolApprovalController {
       userId: context.userId,
       tenantId: context.tenantId,
       roles: context.roles,
+      accessLevel: context.accessLevel,
       correlationId: 'approval-request',
     });
   }
