@@ -135,6 +135,7 @@ export class AiApiKeyGuard implements CanActivate {
       !payload.iss?.trim() ||
       !Number.isInteger(payload.iat) ||
       !Number.isInteger(payload.exp) ||
+      payload.iat > now + 30 ||
       payload.exp <= now ||
       payload.exp - payload.iat > 300 ||
       !this.allowedIssuers.includes(payload.iss)
