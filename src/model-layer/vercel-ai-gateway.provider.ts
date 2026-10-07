@@ -111,15 +111,21 @@ export class VercelAiGatewayProvider implements ModelProvider {
       const message = payload.choices?.[0]?.message;
       const text = message?.content ?? '';
       const toolCalls = (message?.tool_calls ?? [])
-        .filter(
-          (call): call is Required<ChatCompletionToolCall> =>
-            Boolean(call.id && call.function?.name),
-        )
-        .map<ModelToolCall>((call) => ({
-          id: call.id,
-          name: call.function.name,
-          arguments: this.parseToolArguments(call.function.arguments ?? '{}'),
-        }));
+        .map<ModelToolCall | null>((call) => {
+          const id = call.id;
+          const name = call.function?.name;
+
+          if (!id || !name) {
+            return null;
+          }
+
+          return {
+            id,
+            name,
+            arguments: this.parseToolArguments(call.function?.arguments ?? '{}'),
+          };
+        })
+        .filter((call): call is ModelToolCall => call !== null);
 
       if (!text && toolCalls.length === 0) {
         throw new ServiceUnavailableException('AI provider returned no content');
