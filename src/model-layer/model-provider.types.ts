@@ -5,6 +5,9 @@ export interface ModelGenerationRequest {
   readonly input: string;
   readonly systemInstruction?: string;
   readonly correlationId: string;
+  readonly tenantId: string;
+  readonly userId?: string;
+  readonly conversationId?: string;
 }
 
 export interface ModelGenerationResponse {
