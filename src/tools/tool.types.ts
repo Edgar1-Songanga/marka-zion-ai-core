@@ -1,4 +1,4 @@
-import { AiSpace } from '../core/contracts/ai.types';
+import { AiAccessLevel, AiSpace } from '../core/contracts/ai.types';
 
 export type ToolPermission = 'READ' | 'WRITE' | 'SENSITIVE_WRITE';
 
@@ -7,6 +7,7 @@ export interface AiToolContext {
   readonly userId?: string;
   readonly tenantId?: string;
   readonly roles: readonly string[];
+  readonly accessLevel: AiAccessLevel;
   readonly correlationId: string;
   readonly idempotencyKey?: string;
   readonly signal?: AbortSignal;
