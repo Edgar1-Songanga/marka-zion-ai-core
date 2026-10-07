@@ -1,7 +1,7 @@
 import {
   Injectable,
   ServiceUnavailableException,
-  TooManyRequestsException,
+  HttpException,
 } from '@nestjs/common';
 import { PostgresService } from '../../infrastructure/postgres/postgres.service';
 
@@ -46,8 +46,8 @@ export class QuotaService {
       [tenantId, minute, this.requestsPerMinute],
     ).then((result) => {
       if (result.rowCount !== 1) {
-        throw new TooManyRequestsException(
-          'Tenant request rate limit exceeded',
+        throw new HttpException(
+          'Tenant request rate limit exceeded', 429,
         );
       }
     });
@@ -87,8 +87,8 @@ export class QuotaService {
       );
 
       if (daily.rowCount !== 1) {
-        throw new TooManyRequestsException(
-          'Tenant daily token quota exceeded',
+        throw new HttpException(
+          'Tenant daily token quota exceeded', 429,
         );
       }
 
