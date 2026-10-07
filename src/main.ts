@@ -1,3 +1,4 @@
+import { CoreConfigService } from './core/config/core-config.service';
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import {
