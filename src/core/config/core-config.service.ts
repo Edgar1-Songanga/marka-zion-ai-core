@@ -25,6 +25,11 @@ export class CoreConfigService {
     return Number.isFinite(value) && value > 0 ? value : 50000;
   }
 
+  get maxAgentSteps(): number {
+    const value = Number(process.env.AI_MAX_AGENT_STEPS ?? 8);
+    return Number.isFinite(value) && value > 0 && value <= 20 ? Math.floor(value) : 8;
+  }
+
   get maxGroundingCharacters(): number {
     const value = Number(process.env.AI_MAX_GROUNDING_CHARACTERS ?? 30000);
     return Number.isFinite(value) && value > 0 ? value : 30000;
