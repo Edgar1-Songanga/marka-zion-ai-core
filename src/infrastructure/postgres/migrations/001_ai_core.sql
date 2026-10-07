@@ -151,3 +151,29 @@ CREATE TABLE IF NOT EXISTS ai_jobs (
 
 CREATE INDEX IF NOT EXISTS ai_jobs_claim_idx
   ON ai_jobs (queue, status, available_at);
+
+
+CREATE TABLE IF NOT EXISTS ai_eval_cases (
+  id UUID PRIMARY KEY,
+  name TEXT NOT NULL,
+  space TEXT NOT NULL,
+  input TEXT NOT NULL,
+  expected_contains JSONB NOT NULL DEFAULT '[]'::jsonb,
+  enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS ai_eval_runs (
+  id UUID PRIMARY KEY,
+  case_id UUID NOT NULL REFERENCES ai_eval_cases(id),
+  model TEXT NOT NULL,
+  output TEXT,
+  passed BOOLEAN NOT NULL,
+  details JSONB NOT NULL DEFAULT '{}'::jsonb,
+  duration_ms INTEGER NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS ai_eval_runs_case_idx
+  ON ai_eval_runs (case_id, created_at DESC);
