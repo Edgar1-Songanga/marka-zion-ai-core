@@ -5,6 +5,7 @@ import { AiRequest, AiResponse } from '../core/contracts/ai.types';
 import { AiSecurityService } from '../core/security/ai-security.service';
 import { QuotaService } from '../core/quotas/quota.service';
 import { UsageService } from '../core/observability/usage.service';
+import { KnowledgeService } from '../knowledge/knowledge.service';
 import { ToolExecutionResult, ToolExecutionService } from '../tools/tool-execution.service';
 import { ModelProviderRegistry } from '../model-layer/model-provider.registry';
 import { ModelGenerationResponse } from '../model-layer/model-provider.types';
@@ -23,6 +24,7 @@ export class AiGatewayService {
     private readonly tools: ToolExecutionService,
     private readonly quotas: QuotaService,
     private readonly usage: UsageService,
+    private readonly knowledge: KnowledgeService,
   ) {}
 
   async accept(request: AiRequest): Promise<AiResponse> {
@@ -45,9 +47,9 @@ export class AiGatewayService {
   ): Promise<ModelGenerationResponse & { requestId: string }> {
     this.security.validateRequest(request);
 
-    if (request.operation === 'TOOL_CALL') {
+    if (request.operation !== 'CHAT') {
       throw new BadRequestException(
-        'TOOL_CALL must use the governed tool execution endpoint',
+        'Only CHAT requests can use the model generation endpoint',
       );
     }
 
@@ -155,3 +157,31 @@ export class AiGatewayService {
     });
   }
 }
+
+
+  async queryKnowledge(request: AiRequest) {
+    this.security.validateRequest(request);
+
+    if (request.operation !== 'KNOWLEDGE_QUERY') {
+      throw new BadRequestException(
+        'Knowledge query requires operation KNOWLEDGE_QUERY',
+      );
+    }
+
+    const requestId = request.context.requestId ?? randomUUID();
+    await this.quotas.reserveRequest(request.context.tenantId!);
+    await this.audit.recordAccepted(request, requestId);
+
+    const documents = await this.knowledge.search({
+      tenantId: request.context.tenantId!,
+      space: request.space,
+      query: request.input,
+      limit: 10,
+    });
+
+    return {
+      requestId,
+      space: request.space,
+      documents,
+    };
+  }
