@@ -41,6 +41,10 @@ export class AgentRegistryService {
 
   list(): readonly AgentDefinition[] { return [...this.agents.values()]; }
 
+  listByRisk(riskLevel: AgentDefinition['riskLevel']): readonly AgentDefinition[] {
+    return this.list().filter((agent) => agent.riskLevel === riskLevel);
+  }
+
   listByFamily(family: AgentFamily): readonly AgentDefinition[] {
     return this.list().filter((agent) => agent.family === family);
   }
