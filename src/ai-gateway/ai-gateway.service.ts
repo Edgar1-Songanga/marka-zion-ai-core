@@ -6,7 +6,10 @@ import { AiSecurityService } from '../core/security/ai-security.service';
 import { QuotaService } from '../core/quotas/quota.service';
 import { UsageService } from '../core/observability/usage.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
-import { ToolExecutionResult, ToolExecutionService } from '../tools/tool-execution.service';
+import {
+  ToolExecutionResult,
+  ToolExecutionService,
+} from '../tools/tool-execution.service';
 import { ModelProviderRegistry } from '../model-layer/model-provider.registry';
 import { ModelGenerationResponse } from '../model-layer/model-provider.types';
 
@@ -66,6 +69,9 @@ export class AiGatewayService {
         space: request.space,
         input: request.input,
         correlationId: request.context.correlationId,
+        tenantId: request.context.tenantId!,
+        userId: request.context.userId,
+        conversationId: request.conversationId,
       });
 
       await this.quotas.recordTokens(
@@ -92,14 +98,16 @@ export class AiGatewayService {
         ...result,
       };
     } catch (error) {
-      await this.usage.record({
-        tenantId: request.context.tenantId!,
-        space: request.space,
-        userId: request.context.userId,
-        requestId,
-        durationMs: Date.now() - startedAt,
-        status: 'FAILED',
-      }).catch(() => undefined);
+      await this.usage
+        .record({
+          tenantId: request.context.tenantId!,
+          space: request.space,
+          userId: request.context.userId,
+          requestId,
+          durationMs: Date.now() - startedAt,
+          status: 'FAILED',
+        })
+        .catch(() => undefined);
 
       throw error;
     }
@@ -118,6 +126,7 @@ export class AiGatewayService {
     }
 
     const requestId = request.context.requestId ?? randomUUID();
+
     await this.quotas.reserveRequest(request.context.tenantId!);
     await this.audit.recordAccepted(request, requestId);
 
@@ -153,11 +162,10 @@ export class AiGatewayService {
         tenantId: request.context.tenantId,
         roles: request.context.roles,
         correlationId: request.context.correlationId,
+        idempotencyKey,
       },
     });
   }
-}
-
 
   async queryKnowledge(request: AiRequest) {
     this.security.validateRequest(request);
@@ -169,6 +177,7 @@ export class AiGatewayService {
     }
 
     const requestId = request.context.requestId ?? randomUUID();
+
     await this.quotas.reserveRequest(request.context.tenantId!);
     await this.audit.recordAccepted(request, requestId);
 
@@ -185,3 +194,4 @@ export class AiGatewayService {
       documents,
     };
   }
+}
