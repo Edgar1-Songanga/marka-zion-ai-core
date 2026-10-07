@@ -118,6 +118,9 @@ export class AiGatewayController {
           : developmentFallback
             ? body.roles ?? []
             : [],
+        accessLevel: useSignedContext
+          ? authenticated!.accessLevel
+          : 'STANDARD',
       },
     };
   }
