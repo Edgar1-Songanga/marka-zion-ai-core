@@ -25,6 +25,9 @@ interface AiGatewayBody {
   readonly operation: AiOperation;
   readonly input: string;
   readonly conversationId?: string;
+  readonly userId?: string;
+  readonly tenantId?: string;
+  readonly roles?: readonly string[];
 }
 
 interface AuthenticatedRequest {
@@ -79,6 +82,8 @@ export class AiGatewayController {
     }
 
     const useSignedContext = Boolean(authenticated?.space);
+    const developmentFallback =
+      !useSignedContext && process.env.NODE_ENV !== 'production';
 
     return {
       space: useSignedContext ? authenticated!.space : body.space,
@@ -87,11 +92,21 @@ export class AiGatewayController {
       conversationId: body.conversationId,
       context: {
         correlationId: correlationId?.trim() || randomUUID(),
-        userId: useSignedContext ? authenticated!.userId : undefined,
+        userId: useSignedContext
+          ? authenticated!.userId
+          : developmentFallback
+            ? body.userId
+            : undefined,
         tenantId: useSignedContext
           ? authenticated!.tenantId
-          : undefined,
-        roles: useSignedContext ? authenticated!.roles : [],
+          : developmentFallback
+            ? body.tenantId
+            : undefined,
+        roles: useSignedContext
+          ? authenticated!.roles
+          : developmentFallback
+            ? body.roles ?? []
+            : [],
       },
     };
   }
