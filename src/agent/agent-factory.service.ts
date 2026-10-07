@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { AgentDefinition, AgentExecutionMode } from './agent.types';
 import { AgentRegistryService } from './agent-registry.service';
@@ -20,7 +21,7 @@ export class AgentFactoryService {
       throw new Error(`Agent ${agentId} does not support execution mode ${executionMode}`);
     }
     return {
-      instanceId: `${agentId}:${crypto.randomUUID()}`,
+      instanceId: `${agentId}:${randomUUID()}`,
       definition,
       executionMode,
       missionId: input.missionId,
