@@ -7,6 +7,7 @@
     "build": "nest build",
     "start": "node dist/main.js",
     "start:dev": "nest start --watch",
+    "start:worker": "node dist/worker.js",
     "db:migrate": "node dist/infrastructure/postgres/migrate.js"
   },
   "dependencies": {
