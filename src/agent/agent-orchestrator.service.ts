@@ -10,8 +10,8 @@ import { CoreConfigService } from '../core/config/core-config.service';
 import { QuotaService } from '../core/quotas/quota.service';
 import { UsageService } from '../core/observability/usage.service';
 import { ToolApprovalService } from '../approvals/tool-approval.service';
-import { ModelMessage, ModelProviderRegistry } from '../model-layer/model-provider.registry';
-import { ModelToolDefinition } from '../model-layer/model-provider.types';
+import { ModelProviderRegistry } from '../model-layer/model-provider.registry';
+import { ModelMessage, ModelToolDefinition } from '../model-layer/model-provider.types';
 import { ToolExecutionService } from '../tools/tool-execution.service';
 import { ToolRegistryService } from '../tools/tool-registry.service';
 
