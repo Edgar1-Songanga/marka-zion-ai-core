@@ -8,6 +8,7 @@ import { QuotaModule } from './core/quotas/quota.module';
 import { UsageModule } from './core/observability/usage.module';
 import { SpaceRegistryModule } from './core/spaces/space-registry.module';
 import { HealthModule } from './health/health.module';
+import { EvaluationModule } from './evaluation/evaluation.module';
 import { KnowledgeModule } from './knowledge/knowledge.module';
 import { KnowledgeAdminModule } from './knowledge/knowledge-admin.module';
 import { MemoryModule } from './memory/memory.module';
@@ -41,6 +42,7 @@ import { ToolApprovalModule } from './approvals/tool-approval.module';
     ProductConnectorModule,
     HttpsProductConnectorModule,
     HealthModule,
+    EvaluationModule,
     AiGatewayModule,
   ],
 })
