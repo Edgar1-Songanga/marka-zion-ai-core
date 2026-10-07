@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { AiAuditService } from '../core/audit/ai-audit.service';
-import { AiOperation, AiRequest, AiResponse } from '../core/contracts/ai.types';
+import { AiRequest, AiResponse } from '../core/contracts/ai.types';
 import { AiSecurityService } from '../core/security/ai-security.service';
+import { QuotaService } from '../core/quotas/quota.service';
+import { UsageService } from '../core/observability/usage.service';
 import { ToolExecutionResult, ToolExecutionService } from '../tools/tool-execution.service';
 import { ModelProviderRegistry } from '../model-layer/model-provider.registry';
 import { ModelGenerationResponse } from '../model-layer/model-provider.types';
@@ -19,9 +21,11 @@ export class AiGatewayService {
     private readonly audit: AiAuditService,
     private readonly providers: ModelProviderRegistry,
     private readonly tools: ToolExecutionService,
+    private readonly quotas: QuotaService,
+    private readonly usage: UsageService,
   ) {}
 
-  accept(request: AiRequest): AiResponse {
+  async accept(request: AiRequest): Promise<AiResponse> {
     this.security.validateRequest(request);
 
     const requestId = request.context.requestId ?? randomUUID();
@@ -48,20 +52,55 @@ export class AiGatewayService {
     }
 
     const requestId = request.context.requestId ?? randomUUID();
-    this.audit.recordAccepted(request, requestId);
+    const startedAt = Date.now();
 
-    const provider = this.providers.resolve();
+    await this.quotas.reserveRequest(request.context.tenantId!);
+    await this.audit.recordAccepted(request, requestId);
 
-    const result = await provider.generate({
-      space: request.space,
-      input: request.input,
-      correlationId: request.context.correlationId,
-    });
+    try {
+      const provider = this.providers.resolve();
 
-    return {
-      requestId,
-      ...result,
-    };
+      const result = await provider.generate({
+        space: request.space,
+        input: request.input,
+        correlationId: request.context.correlationId,
+      });
+
+      await this.quotas.recordTokens(
+        request.context.tenantId!,
+        result.inputTokens,
+        result.outputTokens,
+      );
+
+      await this.usage.record({
+        tenantId: request.context.tenantId!,
+        space: request.space,
+        userId: request.context.userId,
+        requestId,
+        provider: result.provider,
+        model: result.model,
+        inputTokens: result.inputTokens,
+        outputTokens: result.outputTokens,
+        durationMs: Date.now() - startedAt,
+        status: 'COMPLETED',
+      });
+
+      return {
+        requestId,
+        ...result,
+      };
+    } catch (error) {
+      await this.usage.record({
+        tenantId: request.context.tenantId!,
+        space: request.space,
+        userId: request.context.userId,
+        requestId,
+        durationMs: Date.now() - startedAt,
+        status: 'FAILED',
+      }).catch(() => undefined);
+
+      throw error;
+    }
   }
 
   async executeTool(
@@ -77,7 +116,8 @@ export class AiGatewayService {
     }
 
     const requestId = request.context.requestId ?? randomUUID();
-    this.audit.recordAccepted(request, requestId);
+    await this.quotas.reserveRequest(request.context.tenantId!);
+    await this.audit.recordAccepted(request, requestId);
 
     let envelope: AiToolCallEnvelope;
 
