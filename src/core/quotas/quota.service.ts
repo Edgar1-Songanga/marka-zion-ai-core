@@ -70,22 +70,20 @@ export class QuotaService {
 
     const now = new Date();
     const minute = new Date(Math.floor(now.getTime() / 60000) * 60000);
-    const day = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-    );
+    const usageDay = now.toISOString().slice(0, 10);
 
     await this.db.transaction(async (client) => {
       const daily = await client.query(
-        `INSERT INTO ai_rate_limit_buckets
-          (tenant_id, bucket_start, request_count, token_count)
-         VALUES ($1, $2, 0, $3)
-         ON CONFLICT (tenant_id, bucket_start)
+        `INSERT INTO ai_tenant_daily_usage
+          (tenant_id, usage_day, token_count)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (tenant_id, usage_day)
          DO UPDATE SET
-           token_count = ai_rate_limit_buckets.token_count + EXCLUDED.token_count,
+           token_count = ai_tenant_daily_usage.token_count + EXCLUDED.token_count,
            updated_at = NOW()
-         WHERE ai_rate_limit_buckets.token_count + EXCLUDED.token_count <= $4
+         WHERE ai_tenant_daily_usage.token_count + EXCLUDED.token_count <= $4
          RETURNING token_count`,
-        [tenantId, day, tokens, this.tokensPerDay],
+        [tenantId, usageDay, tokens, this.tokensPerDay],
       );
 
       if (daily.rowCount !== 1) {
