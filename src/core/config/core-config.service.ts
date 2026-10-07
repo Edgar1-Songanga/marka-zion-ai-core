@@ -24,4 +24,9 @@ export class CoreConfigService {
     const value = Number(process.env.AI_MAX_TOOL_OUTPUT_CHARACTERS ?? 50000);
     return Number.isFinite(value) && value > 0 ? value : 50000;
   }
+
+  get maxGroundingCharacters(): number {
+    const value = Number(process.env.AI_MAX_GROUNDING_CHARACTERS ?? 30000);
+    return Number.isFinite(value) && value > 0 ? value : 30000;
+  }
 }
