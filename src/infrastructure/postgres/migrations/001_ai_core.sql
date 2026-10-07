@@ -131,3 +131,23 @@ CREATE TABLE IF NOT EXISTS ai_product_spaces (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+
+CREATE TABLE IF NOT EXISTS ai_jobs (
+  id UUID PRIMARY KEY,
+  queue TEXT NOT NULL,
+  type TEXT NOT NULL,
+  payload JSONB NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('QUEUED', 'RUNNING', 'COMPLETED', 'FAILED', 'DEAD')),
+  attempts INTEGER NOT NULL DEFAULT 0,
+  max_attempts INTEGER NOT NULL DEFAULT 5,
+  available_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  locked_at TIMESTAMPTZ,
+  locked_by TEXT,
+  last_error TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS ai_jobs_claim_idx
+  ON ai_jobs (queue, status, available_at);
