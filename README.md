@@ -59,3 +59,20 @@ Copy `.env.example` to the deployment environment. In production, `AI_CORE_API_K
 5. Human approval workflow for sensitive writes.
 6. Evaluation, tracing, cost/latency telemetry and policy enforcement.
 7. Queue/worker execution for long-running operations.
+
+
+## Production V1 layers now implemented
+
+- Multi-product and multi-tenant space registry with PostgreSQL persistence.
+- Signed inbound product context; production never trusts tenant/user/role fields from request bodies.
+- Durable PostgreSQL audit, idempotency, approvals, usage, quotas, memory, knowledge and jobs.
+- Governed READ / WRITE / SENSITIVE_WRITE tools with schema boundaries.
+- Multi-step agent orchestration with a hard step ceiling and deterministic tool idempotency.
+- Sensitive agent actions stop for human approval instead of executing autonomously.
+- Tenant-scoped PostgreSQL RAG and persistent memory with untrusted-context rules.
+- HTTPS product connectors with operation allowlists, response limits and SSRF protections.
+- Durable queue/worker with atomic claims, retry backoff, dead-letter state and lease recovery.
+- Evaluation harness for controlled model regression cases.
+- Production HTTP hardening, readiness checks and Node 22 CI build gate.
+
+The core is designed to be reusable by ZION, MARKA and future products without changing its public architecture. Product-specific truth remains outside the AI Core.
