@@ -115,9 +115,10 @@ export class ToolApprovalService {
     id: string,
     approved: boolean,
     approverUserId: string,
+    approverTenantId: string,
     approverRoles: readonly string[],
   ): Promise<ToolApprovalRequest> {
-    if (!approverUserId || !approverRoles.includes('ai:approver')) {
+    if (!approverUserId || !approverTenantId || !approverRoles.includes('ai:approver')) {
       throw new ForbiddenException('AI approver permission required');
     }
 
@@ -132,6 +133,10 @@ export class ToolApprovalService {
 
     if (!row) {
       throw new NotFoundException('AI approval request not found');
+    }
+
+    if (row.tenant_id !== approverTenantId) {
+      throw new ForbiddenException('Approval request tenant mismatch');
     }
 
     if (row.status !== 'PENDING') {
