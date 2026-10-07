@@ -30,7 +30,7 @@ async function main(): Promise<void> {
 
       const directory = join(__dirname, 'migrations');
       const files = (await readdir(directory))
-        .filter((file) => /^\\d+_[a-z0-9_-]+\\.sql$/.test(file))
+        .filter((file) => /^\d+_[a-z0-9_-]+\.sql$/.test(file))
         .sort();
 
       for (const file of files) {
