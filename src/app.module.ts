@@ -7,6 +7,7 @@ import { HealthModule } from './health/health.module';
 import { KnowledgeModule } from './knowledge/knowledge.module';
 import { MemoryModule } from './memory/memory.module';
 import { ModelLayerModule } from './model-layer/model-layer.module';
+import { SpacePolicyModule } from './model-layer/space-policy.module';
 import { AiGatewayModule } from './ai-gateway/ai-gateway.module';
 import { ToolEngineModule } from './tools/tool-engine.module';
 import { ProductConnectorModule } from './connectors/product-connector.module';
@@ -18,6 +19,7 @@ import { ProductConnectorModule } from './connectors/product-connector.module';
     AiSecurityModule,
     SpaceRegistryModule,
     ModelLayerModule,
+    SpacePolicyModule,
     KnowledgeModule,
     MemoryModule,
     ToolEngineModule,
