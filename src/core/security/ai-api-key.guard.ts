@@ -130,22 +130,30 @@ export class AiApiKeyGuard implements CanActivate {
 
     const now = Math.floor(Date.now() / 1000);
 
+    const expectedAudience = process.env.AI_CONTEXT_AUDIENCE?.trim();
+
     if (
-      !payload.space?.trim() ||
-      !payload.tenantId?.trim() ||
-      !payload.iss?.trim() ||
-      (process.env.AI_CONTEXT_AUDIENCE && payload.aud !== process.env.AI_CONTEXT_AUDIENCE) ||
+      typeof payload !== 'object' ||
+      payload === null ||
+      Array.isArray(payload) ||
+      typeof payload.space !== 'string' ||
+      typeof payload.tenantId !== 'string' ||
+      typeof payload.iss !== 'string' ||
+      !payload.space.trim() ||
+      !payload.tenantId.trim() ||
+      !payload.iss.trim() ||
       !Number.isInteger(payload.iat) ||
       !Number.isInteger(payload.exp) ||
       payload.iat > now + 30 ||
       payload.exp <= now ||
-      payload.exp - payload.iat > 300 ||
       payload.exp <= payload.iat ||
+      payload.exp - payload.iat > 300 ||
+      (process.env.NODE_ENV === 'production' && !expectedAudience) ||
+      (expectedAudience !== undefined && payload.aud !== expectedAudience) ||
       !this.allowedIssuers.includes(payload.iss)
     ) {
       throw new UnauthorizedException('Invalid or expired AI context');
     }
-
     const roles = payload.roles ?? [];
 
     if (
