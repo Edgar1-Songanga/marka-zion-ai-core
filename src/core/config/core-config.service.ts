@@ -43,6 +43,48 @@ export class CoreConfigService {
     );
   }
 
+  assertProductionReady(): void {
+    if (this.nodeEnv !== 'production') {
+      return;
+    }
+
+    const required = [
+      'AI_CORE_API_KEY',
+      'AI_CONTEXT_SIGNING_SECRET',
+      'AI_ALLOWED_CONTEXT_ISSUERS',
+      'AI_CONTEXT_AUDIENCE',
+      'AI_GATEWAY_API_KEY',
+      'AI_MODEL',
+      'DATABASE_URL',
+    ];
+
+    for (const key of required) {
+      if (!process.env[key]?.trim()) {
+        throw new Error(`Missing required production configuration: ${key}`);
+      }
+    }
+
+    if (process.env.AI_CORE_API_KEY!.length < 32) {
+      throw new Error('AI_CORE_API_KEY must be at least 32 characters');
+    }
+
+    if (process.env.AI_CONTEXT_SIGNING_SECRET!.length < 32) {
+      throw new Error('AI_CONTEXT_SIGNING_SECRET must be at least 32 characters');
+    }
+
+    if (process.env.DATABASE_SSL === 'false') {
+      throw new Error('DATABASE_SSL=false is forbidden in production');
+    }
+
+    const gatewayUrl = new URL(
+      process.env.AI_GATEWAY_BASE_URL ?? 'https://ai-gateway.vercel.sh/v1',
+    );
+
+    if (gatewayUrl.protocol !== 'https:') {
+      throw new Error('AI_GATEWAY_BASE_URL must use HTTPS in production');
+    }
+  }
+
   private boundedNumber(
     key: string,
     fallback: number,
