@@ -7,7 +7,6 @@ export interface HttpsProductConnectorOptions {
   readonly allowedOperations: Readonly<Record<string, string>>;
   readonly timeoutMs: number;
   readonly maxResponseBytes: number;
-  readonly maxRetries: number;
 }
 
 export interface HttpsProductConnectorError extends ProductConnectorResponse {
