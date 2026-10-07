@@ -49,7 +49,7 @@ Copy `.env.example` to the deployment environment. In production, `AI_CORE_API_K
 
 ## Next engineering layers
 
-1. Provider adapter + current model routing configuration.
+1. Provider adapter + current model routing configuration. **Implemented:** Vercel AI Gateway adapter with configurable model and timeout.
 2. Product connector framework for ZION and MARKA HTTPS APIs.
 3. Persistent memory and knowledge adapters.
 4. Idempotency and durable tool execution.
