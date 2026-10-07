@@ -127,6 +127,7 @@ export class AiGatewayService {
         userId: request.context.userId,
         tenantId: request.context.tenantId,
         roles: request.context.roles,
+        accessLevel: request.context.accessLevel ?? 'STANDARD',
         correlationId: request.context.correlationId,
         idempotencyKey,
       },
