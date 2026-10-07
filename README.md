@@ -24,12 +24,15 @@ ZION and MARKA remain the source of truth for their own domains.
 - **Tool engine** — typed tools with ZION/MARKA space isolation and READ/WRITE/SENSITIVE_WRITE permissions.
 - **Observability boundary** — reserved for metrics, tracing, structured logs and operational telemetry.
 
-## AI spaces
+## Product-space model
 
-- `zion`
-- `marka`
+ZION and MARKA are the first registered spaces, not architectural limits.
 
-Every request is explicitly scoped to one product space. Cross-product data access is not implicit.
+The AI Core is designed as a **multi-product / multi-tenant platform**. New internal products, future company projects, and eventually external customers can register their own isolated AI space without changing the public AI Core contract.
+
+Each space can define its own connectors, tools, knowledge sources, memory policies, model-routing policy and permissions. Cross-space access is never implicit.
+
+This makes the core suitable for a future commercial offering: the same infrastructure can power our products and, behind strict tenant isolation and billing/quotas, potentially serve third-party products.
 
 ## Financial and operational safety
 
