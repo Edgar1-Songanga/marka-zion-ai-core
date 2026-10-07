@@ -134,6 +134,7 @@ export class AgentOrchestratorService {
               tenantId: request.context.tenantId,
               userId: request.context.userId,
               roles: request.context.roles,
+              accessLevel: request.context.accessLevel ?? 'STANDARD',
               correlationId: request.context.correlationId,
             },
           );
@@ -165,6 +166,7 @@ export class AgentOrchestratorService {
               tenantId: request.context.tenantId,
               userId: request.context.userId,
               roles: request.context.roles,
+              accessLevel: request.context.accessLevel ?? 'STANDARD',
               correlationId: request.context.correlationId,
               idempotencyKey: `agent:${requestId}:${toolCall.id}`,
             },
