@@ -7,6 +7,9 @@ import {
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
+  const config = new CoreConfigService();
+  config.assertProductionReady();
+
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bodyParser: true,
   });
