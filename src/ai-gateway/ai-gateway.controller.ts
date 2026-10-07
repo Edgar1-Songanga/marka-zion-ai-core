@@ -6,8 +6,14 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { AiOperation, AiRequest, AiResponse, AiSpace } from '../core/contracts/ai.types';
+import {
+  AiOperation,
+  AiRequest,
+  AiResponse,
+  AiSpace,
+} from '../core/contracts/ai.types';
 import { AiApiKeyGuard } from '../core/security/ai-api-key.guard';
+import { ToolExecutionResult } from '../tools/tool-execution.service';
 import { ModelGenerationResponse } from '../model-layer/model-provider.types';
 import { AiGatewayService } from './ai-gateway.service';
 
@@ -40,6 +46,14 @@ export class AiGatewayController {
     @Headers('x-correlation-id') correlationId?: string,
   ): Promise<ModelGenerationResponse & { requestId: string }> {
     return this.gateway.generate(this.toRequest(body, correlationId));
+  }
+
+  @Post('tools/execute')
+  async executeTool(
+    @Body() body: AiGatewayBody,
+    @Headers('x-correlation-id') correlationId?: string,
+  ): Promise<ToolExecutionResult> {
+    return this.gateway.executeTool(this.toRequest(body, correlationId));
   }
 
   private toRequest(body: AiGatewayBody, correlationId?: string): AiRequest {
