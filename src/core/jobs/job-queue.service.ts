@@ -52,7 +52,24 @@ export class JobQueueService {
     this.requireDatabase();
 
     return this.db.transaction(async (client) => {
-      const leaseMs = Number(process.env.AI_JOB_LEASE_MS ?? 300000);\n      await client.query(\n        `UPDATE ai_jobs\n         SET status = CASE WHEN attempts >= max_attempts THEN 'DEAD' ELSE 'QUEUED' END,\n             locked_at = NULL, locked_by = NULL, updated_at = NOW()\n         WHERE queue = $1 AND status = 'RUNNING'\n           AND locked_at < NOW() - ($2 * INTERVAL '1 millisecond')`,\n        [queue, leaseMs],\n      );\n\n      const result = await client.query<JobRow>(
+      const leaseMs = Number(process.env.AI_JOB_LEASE_MS ?? 300000);
+
+      await client.query(
+        `UPDATE ai_jobs
+         SET status = CASE
+           WHEN attempts >= max_attempts THEN 'DEAD'
+           ELSE 'QUEUED'
+         END,
+         locked_at = NULL,
+         locked_by = NULL,
+         updated_at = NOW()
+         WHERE queue = $1
+           AND status = 'RUNNING'
+           AND locked_at < NOW() - ($2 * INTERVAL '1 millisecond')`,
+        [queue, leaseMs],
+      );
+
+      const result = await client.query<JobRow>(
         `SELECT id, queue, type, payload, attempts, max_attempts
          FROM ai_jobs
          WHERE queue = $1
