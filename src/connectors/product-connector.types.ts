@@ -7,6 +7,7 @@ export interface ProductConnectorRequest {
   readonly correlationId: string;
   readonly userId?: string;
   readonly tenantId?: string;
+  readonly idempotencyKey?: string;
 }
 
 export interface ProductConnectorResponse {
