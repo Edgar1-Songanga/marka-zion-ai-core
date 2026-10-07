@@ -22,6 +22,7 @@ export interface ToolApprovalRequest {
     | 'APPROVED'
     | 'REJECTED'
     | 'EXPIRED'
+    | 'EXECUTING'
     | 'EXECUTED'
     | 'FAILED';
   readonly expiresAt: string;
@@ -36,6 +37,7 @@ interface ApprovalRow {
   readonly input_json: unknown;
   readonly status: ToolApprovalRequest['status'];
   readonly expires_at: Date;
+  readonly executing_at: Date | null;
 }
 
 @Injectable()
@@ -123,7 +125,7 @@ export class ToolApprovalService {
     }
 
     const result = await this.db.query<ApprovalRow>(
-      `SELECT id, space, tenant_id, user_id, tool_name, input_json, status, expires_at
+      `SELECT id, space, tenant_id, user_id, tool_name, input_json, status, expires_at, executing_at
        FROM ai_approval_requests
        WHERE id = $1`,
       [id],
@@ -188,6 +190,15 @@ export class ToolApprovalService {
       throw new ForbiddenException('Authenticated actor context is required');
     }
 
+    await this.db.query(
+      `UPDATE ai_approval_requests
+       SET status = 'APPROVED', executing_at = NULL
+       WHERE id = $1
+         AND status = 'EXECUTING'
+         AND executing_at < NOW() - INTERVAL '5 minutes'`,
+      [id],
+    );
+
     const result = await this.db.transaction(async (client) => {
       const locked = await client.query<ApprovalRow>(
         `SELECT id, space, tenant_id, user_id, tool_name, input_json, status, expires_at
@@ -221,7 +232,7 @@ export class ToolApprovalService {
 
       const claimed = await client.query<ApprovalRow>(
         `UPDATE ai_approval_requests
-         SET status = 'EXECUTING', executed_at = NULL
+         SET status = 'EXECUTING', executing_at = NOW(), executed_at = NULL
          WHERE id = $1 AND status = 'APPROVED'
          RETURNING id, space, tenant_id, user_id, tool_name, input_json, status, expires_at`,
         [id],
@@ -252,7 +263,7 @@ export class ToolApprovalService {
 
       await this.db.query(
         `UPDATE ai_approval_requests
-         SET status = 'EXECUTED', executed_at = NOW()
+         SET status = 'EXECUTED', executing_at = NULL, executed_at = NOW()
          WHERE id = $1 AND status = 'EXECUTING'`,
         [id],
       );
@@ -261,7 +272,7 @@ export class ToolApprovalService {
     } catch (error) {
       await this.db.query(
         `UPDATE ai_approval_requests
-         SET status = 'FAILED', executed_at = NOW()
+         SET status = 'FAILED', executing_at = NULL, executed_at = NOW()
          WHERE id = $1 AND status = 'EXECUTING'`,
         [id],
       );
