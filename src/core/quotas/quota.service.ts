@@ -19,13 +19,52 @@ export class QuotaService {
   constructor(private readonly db: PostgresService) {}
 
   async reserveRequest(tenantId: string): Promise<void> {
+    this.requireTenant(tenantId);
+
     if (!process.env.DATABASE_URL) {
       if (process.env.NODE_ENV === 'production') {
         throw new ServiceUnavailableException(
           'Quota storage is not configured',
         );
       }
+      return;
+    }
 
+    const now = new Date();
+    const minute = new Date(Math.floor(now.getTime() / 60000) * 60000);
+
+    await this.db.query(
+      `INSERT INTO ai_rate_limit_buckets
+        (tenant_id, bucket_start, request_count, token_count)
+       VALUES ($1, $2, 1, 0)
+       ON CONFLICT (tenant_id, bucket_start)
+       DO UPDATE SET
+         request_count = ai_rate_limit_buckets.request_count + 1,
+         updated_at = NOW()
+       WHERE ai_rate_limit_buckets.request_count < $3
+       RETURNING request_count`,
+      [tenantId, minute, this.requestsPerMinute],
+    ).then((result) => {
+      if (result.rowCount !== 1) {
+        throw new TooManyRequestsException(
+          'Tenant request rate limit exceeded',
+        );
+      }
+    });
+  }
+
+  async recordTokens(
+    tenantId: string,
+    inputTokens = 0,
+    outputTokens = 0,
+  ): Promise<void> {
+    this.requireTenant(tenantId);
+
+    const input = this.sanitizeTokens(inputTokens);
+    const output = this.sanitizeTokens(outputTokens);
+    const tokens = input + output;
+
+    if (!process.env.DATABASE_URL || tokens === 0) {
       return;
     }
 
@@ -36,61 +75,49 @@ export class QuotaService {
     );
 
     await this.db.transaction(async (client) => {
-      const minuteResult = await client.query(
+      const daily = await client.query(
         `INSERT INTO ai_rate_limit_buckets
           (tenant_id, bucket_start, request_count, token_count)
-         VALUES ($1, $2, 1, 0)
+         VALUES ($1, $2, 0, $3)
          ON CONFLICT (tenant_id, bucket_start)
          DO UPDATE SET
-           request_count = ai_rate_limit_buckets.request_count + 1,
+           token_count = ai_rate_limit_buckets.token_count + EXCLUDED.token_count,
            updated_at = NOW()
-         WHERE ai_rate_limit_buckets.request_count < $3
-         RETURNING request_count`,
-        [tenantId, minute, this.requestsPerMinute],
+         WHERE ai_rate_limit_buckets.token_count + EXCLUDED.token_count <= $4
+         RETURNING token_count`,
+        [tenantId, day, tokens, this.tokensPerDay],
       );
 
-      if (minuteResult.rowCount !== 1) {
+      if (daily.rowCount !== 1) {
         throw new TooManyRequestsException(
-          'Tenant request rate limit exceeded',
+          'Tenant daily token quota exceeded',
         );
       }
 
-      const daily = await client.query<{ token_count: string }>(
-        `SELECT COALESCE(SUM(token_count), 0)::text AS token_count
-         FROM ai_rate_limit_buckets
-         WHERE tenant_id = $1 AND bucket_start >= $2`,
-        [tenantId, day],
+      await client.query(
+        `INSERT INTO ai_rate_limit_buckets
+          (tenant_id, bucket_start, request_count, token_count)
+         VALUES ($1, $2, 0, $3)
+         ON CONFLICT (tenant_id, bucket_start)
+         DO UPDATE SET
+           token_count = ai_rate_limit_buckets.token_count + EXCLUDED.token_count,
+           updated_at = NOW()`,
+        [tenantId, minute, tokens],
       );
-
-      if (Number(daily.rows[0]?.token_count ?? 0) >= this.tokensPerDay) {
-        throw new TooManyRequestsException('Tenant daily token quota exceeded');
-      }
     });
   }
 
-  async recordTokens(
-    tenantId: string,
-    inputTokens = 0,
-    outputTokens = 0,
-  ): Promise<void> {
-    if (!process.env.DATABASE_URL) {
-      return;
+  private sanitizeTokens(value: number): number {
+    if (!Number.isFinite(value) || value < 0 || !Number.isInteger(value)) {
+      return 0;
     }
+    return Math.min(value, 10_000_000);
+  }
 
-    const now = new Date();
-    const minute = new Date(Math.floor(now.getTime() / 60000) * 60000);
-    const tokens = Math.max(0, inputTokens) + Math.max(0, outputTokens);
-
-    await this.db.query(
-      `INSERT INTO ai_rate_limit_buckets
-        (tenant_id, bucket_start, request_count, token_count)
-       VALUES ($1, $2, 0, $3)
-       ON CONFLICT (tenant_id, bucket_start)
-       DO UPDATE SET
-         token_count = ai_rate_limit_buckets.token_count + EXCLUDED.token_count,
-         updated_at = NOW()`,
-      [tenantId, minute, tokens],
-    );
+  private requireTenant(tenantId: string): void {
+    if (!tenantId?.trim() || tenantId.length > 128) {
+      throw new ServiceUnavailableException('Valid tenant context is required');
+    }
   }
 
   private parsePositive(value: string | undefined, fallback: number): number {
