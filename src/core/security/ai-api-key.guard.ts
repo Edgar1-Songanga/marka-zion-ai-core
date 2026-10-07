@@ -62,6 +62,13 @@ export class AiApiKeyGuard implements CanActivate {
     }
   }
 
+  private get allowedIssuers(): readonly string[] {
+    return (process.env.AI_ALLOWED_CONTEXT_ISSUERS ?? '')
+      .split(',')
+      .map((issuer) => issuer.trim())
+      .filter(Boolean);
+  }
+
   private verifyContext(request: RequestLike): AiAuthenticatedContext {
     const tokenHeader = request.headers['x-ai-context-token'];
     const token = Array.isArray(tokenHeader) ? tokenHeader[0] : tokenHeader;
@@ -129,7 +136,8 @@ export class AiApiKeyGuard implements CanActivate {
       !Number.isInteger(payload.iat) ||
       !Number.isInteger(payload.exp) ||
       payload.exp <= now ||
-      payload.exp - payload.iat > 300
+      payload.exp - payload.iat > 300 ||
+      !this.allowedIssuers.includes(payload.iss)
     ) {
       throw new UnauthorizedException('Invalid or expired AI context');
     }
