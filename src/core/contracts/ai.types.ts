@@ -1,5 +1,7 @@
 export type AiSpace = string;
 
+export type AiAccessLevel = 'STANDARD' | 'OWNER';
+
 export type AiOperation = 'CHAT' | 'TOOL_CALL' | 'KNOWLEDGE_QUERY';
 
 export interface AiRequestContext {
@@ -8,6 +10,7 @@ export interface AiRequestContext {
   readonly tenantId?: string;
   readonly userId?: string;
   readonly roles: readonly string[];
+  readonly accessLevel: AiAccessLevel;
 }
 
 export interface AiRequest {
