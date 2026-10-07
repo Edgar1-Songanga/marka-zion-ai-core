@@ -21,22 +21,36 @@ export class HealthController {
 
   @Get('ready')
   async getReady(): Promise<{ status: 'ready' }> {
-    if (!process.env.DATABASE_URL) {
-      if (process.env.NODE_ENV === 'production') {
+    if (process.env.NODE_ENV === 'production') {
+      if (!process.env.DATABASE_URL) {
         throw new ServiceUnavailableException('Database is not configured');
       }
 
-      return { status: 'ready' };
+      if (!process.env.AI_CORE_API_KEY) {
+        throw new ServiceUnavailableException(
+          'AI Core authentication is not configured',
+        );
+      }
+
+      if (!process.env.AI_CONTEXT_SIGNING_SECRET) {
+        throw new ServiceUnavailableException(
+          'AI context signing is not configured',
+        );
+      }
+
+      if (!process.env.AI_GATEWAY_API_KEY || !process.env.AI_MODEL) {
+        throw new ServiceUnavailableException(
+          'AI provider configuration is not complete',
+        );
+      }
     }
 
-    try {
-      await this.db.query('SELECT 1');
-    } catch {
-      throw new ServiceUnavailableException('Database is unavailable');
-    }
-
-    if (!process.env.AI_CORE_API_KEY) {
-      throw new ServiceUnavailableException('AI Core authentication is not configured');
+    if (process.env.DATABASE_URL) {
+      try {
+        await this.db.query('SELECT 1');
+      } catch {
+        throw new ServiceUnavailableException('Database is unavailable');
+      }
     }
 
     return { status: 'ready' };
