@@ -5,6 +5,8 @@ import {
 import { ProductConnector, ProductConnectorRequest, ProductConnectorResponse } from './product-connector.types';
 import { HttpsProductConnectorOptions } from './https-product-connector.types';
 
+const PRIVATE_IPV4 = /^(10\\.|127\\.|169\\\.254\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.|192\\.168\\.)/;
+
 @Injectable()
 export class HttpsProductConnector implements ProductConnector {
   readonly spaceId: string;
@@ -133,6 +135,11 @@ export class HttpsProductConnector implements ProductConnector {
 
     if (url.username || url.password) {
       throw new Error('Product connector baseUrl must not contain credentials.');
+    }
+
+    const hostname = url.hostname.toLowerCase();
+    if (hostname === 'localhost' || hostname === '::1' || PRIVATE_IPV4.test(hostname)) {
+      throw new Error('Product connector baseUrl must not target private or loopback addresses.');
     }
 
     return url;
