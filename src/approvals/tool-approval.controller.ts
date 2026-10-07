@@ -17,6 +17,11 @@ interface DecisionBody {
   readonly approverRoles?: readonly string[];
 }
 
+interface ExecuteBody {
+  readonly actorUserId: string;
+  readonly actorTenantId: string;
+}
+
 @Controller('v1/ai/approvals')
 @UseGuards(AiApiKeyGuard)
 export class ToolApprovalController {
@@ -40,6 +45,15 @@ export class ToolApprovalController {
       body.approved,
       body.approverUserId,
       body.approverRoles ?? [],
+    );
+  }
+
+  @Post(':id/execute')
+  execute(@Param('id') id: string, @Body() body: ExecuteBody) {
+    return this.approvals.executeApproved(
+      id,
+      body.actorUserId,
+      body.actorTenantId,
     );
   }
 }
