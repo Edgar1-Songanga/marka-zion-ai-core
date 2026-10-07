@@ -224,6 +224,7 @@ export class ToolApprovalService {
           userId: result.user_id ?? actorUserId,
           roles: ['ai:write'],
           correlationId: `approval:${id}`,
+          idempotencyKey: `approval:${id}`,
         },
       });
 
