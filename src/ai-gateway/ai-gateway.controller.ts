@@ -57,6 +57,17 @@ export class AiGatewayController {
     return this.gateway.generate(this.toRequest(body, correlationId, request));
   }
 
+  @Post('knowledge/query')
+  async queryKnowledge(
+    @Body() body: AiGatewayBody,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.gateway.queryKnowledge(
+      this.toRequest(body, correlationId, request),
+    );
+  }
+
   @Post('tools/execute')
   async executeTool(
     @Body() body: AiGatewayBody,
