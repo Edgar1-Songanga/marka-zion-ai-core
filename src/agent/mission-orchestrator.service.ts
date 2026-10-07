@@ -11,6 +11,9 @@ export class MissionOrchestratorService {
   ) {}
 
   plan(request: MissionRequest): MissionState {
+    if (request.accessLevel === 'STANDARD' && request.executionMode === 'AUTONOMOUS') {
+      throw new Error('Autonomous missions require OWNER access');
+    }
     if (!request.tenantId || !request.userId) throw new Error('Mission requires authenticated tenant and user context');
     const candidates = this.registry.select({
       requiredSkills: request.requiredSkills,
@@ -40,8 +43,9 @@ export class MissionOrchestratorService {
   }
 
   instantiateTeam(state: MissionState) {
+    const mode = state.plan.team.members.length > 1 ? 'EXECUTION' : 'ADVISORY';
     return state.plan.team.members.map((member) => this.factory.create(member.agentId, {
-      executionMode: state.plan.team.members.length > 1 ? 'EXECUTION' : 'ADVISORY',
+      executionMode: mode,
       missionId: state.missionId,
     }));
   }
