@@ -30,6 +30,10 @@ export class CoreConfigService {
     return this.boundedNumber('AI_MAX_TOOL_CALLS_PER_STEP', 8, 1, 32);
   }
 
+  get maxProviderResponseCharacters(): number {
+    return this.boundedNumber('AI_MAX_PROVIDER_RESPONSE_CHARACTERS', 2000000, 10000, 10000000);
+  }
+
   get maxGroundingCharacters(): number {
     return this.boundedNumber(
       'AI_MAX_GROUNDING_CHARACTERS',
