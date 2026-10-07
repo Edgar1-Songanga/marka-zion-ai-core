@@ -7,7 +7,7 @@
     "assets": [
       {
         "include": "infrastructure/postgres/migrations/**/*.sql",
-        "outDir": "dist/infrastructure/postgres/migrations",
+        "outDir": "dist",
         "watchAssets": true
       }
     ]
