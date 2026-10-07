@@ -66,6 +66,7 @@ export class AiGatewayService {
 
   async executeTool(
     request: AiRequest,
+    idempotencyKey?: string,
   ): Promise<ToolExecutionResult> {
     this.security.validateRequest(request);
 
@@ -103,6 +104,7 @@ export class AiGatewayService {
       requestId,
       toolName: envelope.toolName,
       input: envelope.input,
+      idempotencyKey,
       context: {
         space: request.space,
         userId: request.context.userId,
