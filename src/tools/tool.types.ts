@@ -16,6 +16,7 @@ export interface AiToolDefinition<TInput = unknown, TOutput = unknown> {
   readonly description: string;
   readonly permission: ToolPermission;
   readonly spaces: readonly AiSpace[];
+  readonly inputSchema?: Readonly<Record<string, unknown>>;
   readonly validateInput?: (input: unknown) => input is TInput;
   execute(input: TInput, context: AiToolContext): Promise<TOutput>;
 }
