@@ -8,6 +8,8 @@ export interface RuntimeAgent {
   readonly definition: AgentDefinition;
   readonly executionMode: AgentExecutionMode;
   readonly missionId?: string;
+  readonly capabilities: readonly string[];
+  readonly skills: readonly string[];
 }
 
 @Injectable()
@@ -25,6 +27,8 @@ export class AgentFactoryService {
       definition,
       executionMode,
       missionId: input.missionId,
+      capabilities: definition.capabilities,
+      skills: definition.skills,
     };
   }
 }
