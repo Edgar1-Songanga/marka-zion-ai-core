@@ -20,6 +20,7 @@ interface SignedContextPayload {
   readonly iat: number;
   readonly exp: number;
   readonly iss: string;
+  readonly aud?: string;
 }
 
 @Injectable()
@@ -133,11 +134,13 @@ export class AiApiKeyGuard implements CanActivate {
       !payload.space?.trim() ||
       !payload.tenantId?.trim() ||
       !payload.iss?.trim() ||
+      (process.env.AI_CONTEXT_AUDIENCE && payload.aud !== process.env.AI_CONTEXT_AUDIENCE) ||
       !Number.isInteger(payload.iat) ||
       !Number.isInteger(payload.exp) ||
       payload.iat > now + 30 ||
       payload.exp <= now ||
       payload.exp - payload.iat > 300 ||
+      payload.exp <= payload.iat ||
       !this.allowedIssuers.includes(payload.iss)
     ) {
       throw new UnauthorizedException('Invalid or expired AI context');
