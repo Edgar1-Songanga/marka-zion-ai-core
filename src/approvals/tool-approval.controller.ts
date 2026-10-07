@@ -79,6 +79,7 @@ export class ToolApprovalController {
       id,
       context.userId ?? '',
       context.tenantId,
+      context.accessLevel,
     );
   }
 
