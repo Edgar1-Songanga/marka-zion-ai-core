@@ -8,6 +8,7 @@ export interface AiToolContext {
   readonly tenantId?: string;
   readonly roles: readonly string[];
   readonly correlationId: string;
+  readonly idempotencyKey?: string;
 }
 
 export interface AiToolDefinition<TInput = unknown, TOutput = unknown> {
