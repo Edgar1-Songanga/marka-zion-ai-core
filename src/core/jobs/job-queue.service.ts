@@ -48,10 +48,7 @@ export class JobQueueService {
     return id;
   }
 
-  async claim(
-    queue: string,
-    workerId: string,
-  ): Promise<JobRecord | null> {
+  async claim(queue: string, workerId: string): Promise<JobRecord | null> {
     this.requireDatabase();
 
     return this.db.transaction(async (client) => {
@@ -109,49 +106,56 @@ export class JobQueueService {
   async fail(id: string, error: unknown): Promise<void> {
     this.requireDatabase();
 
-    const result = await this.db.query<{
-      attempts: number;
-      max_attempts: number;
-    }>(
-      `SELECT attempts, max_attempts
-       FROM ai_jobs
-       WHERE id = $1
-       FOR UPDATE`,
-      [id],
-    );
-
-    const row = result.rows[0];
-
-    if (!row) {
-      return;
-    }
-
-    const message =
-      error instanceof Error ? error.message.slice(0, 1000) : 'Unknown job error';
-
-    if (row.attempts >= row.max_attempts) {
-      await this.db.query(
-        `UPDATE ai_jobs
-         SET status = 'DEAD', last_error = $2, updated_at = NOW()
-         WHERE id = $1`,
-        [id, message],
+    await this.db.transaction(async (client) => {
+      const result = await client.query<{
+        attempts: number;
+        max_attempts: number;
+      }>(
+        `SELECT attempts, max_attempts
+         FROM ai_jobs
+         WHERE id = $1
+         FOR UPDATE`,
+        [id],
       );
-      return;
-    }
 
-    const delaySeconds = Math.min(300, 2 ** Math.max(row.attempts - 1, 0));
+      const row = result.rows[0];
 
-    await this.db.query(
-      `UPDATE ai_jobs
-       SET status = 'QUEUED',
-           available_at = NOW() + ($2 * INTERVAL '1 second'),
-           last_error = $3,
-           locked_at = NULL,
-           locked_by = NULL,
-           updated_at = NOW()
-       WHERE id = $1`,
-      [id, delaySeconds, message],
-    );
+      if (!row) {
+        return;
+      }
+
+      const message =
+        error instanceof Error
+          ? error.message.slice(0, 1000)
+          : 'Unknown job error';
+
+      if (row.attempts >= row.max_attempts) {
+        await client.query(
+          `UPDATE ai_jobs
+           SET status = 'DEAD', last_error = $2, updated_at = NOW()
+           WHERE id = $1`,
+          [id, message],
+        );
+        return;
+      }
+
+      const delaySeconds = Math.min(
+        300,
+        2 ** Math.max(row.attempts - 1, 0),
+      );
+
+      await client.query(
+        `UPDATE ai_jobs
+         SET status = 'QUEUED',
+             available_at = NOW() + ($2 * INTERVAL '1 second'),
+             last_error = $3,
+             locked_at = NULL,
+             locked_by = NULL,
+             updated_at = NOW()
+         WHERE id = $1`,
+        [id, delaySeconds, message],
+      );
+    });
   }
 
   private requireDatabase(): void {
