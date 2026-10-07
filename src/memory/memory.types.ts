@@ -2,6 +2,7 @@ import { AiSpace } from '../core/contracts/ai.types';
 
 export interface MemoryRecord {
   readonly id: string;
+  readonly tenantId: string;
   readonly space: AiSpace;
   readonly userId: string;
   readonly conversationId?: string;
@@ -12,6 +13,17 @@ export interface MemoryRecord {
 }
 
 export interface MemoryStore {
-  get(userId: string, space: AiSpace, key: string): Promise<MemoryRecord | null>;
+  get(
+    tenantId: string,
+    userId: string,
+    space: AiSpace,
+    key: string,
+  ): Promise<MemoryRecord | null>;
   set(record: MemoryRecord): Promise<void>;
+  recent(
+    tenantId: string,
+    userId: string,
+    space: AiSpace,
+    limit: number,
+  ): Promise<readonly MemoryRecord[]>;
 }
