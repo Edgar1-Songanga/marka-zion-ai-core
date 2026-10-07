@@ -1,6 +1,7 @@
 import { AiSpace } from '../core/contracts/ai.types';
 
 export interface KnowledgeQuery {
+  readonly tenantId: string;
   readonly space: AiSpace;
   readonly query: string;
   readonly limit: number;
@@ -8,6 +9,7 @@ export interface KnowledgeQuery {
 
 export interface KnowledgeDocument {
   readonly id: string;
+  readonly tenantId: string;
   readonly space: AiSpace;
   readonly title: string;
   readonly content: string;
