@@ -1,4 +1,13 @@
-import { Body, Controller, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import { AiAuthenticatedContext } from '../core/security/ai-authenticated-context';
 import { AiApiKeyGuard } from '../core/security/ai-api-key.guard';
 import { ToolApprovalService } from './tool-approval.service';
 
@@ -6,20 +15,14 @@ interface ApprovalBody {
   readonly toolName: string;
   readonly input: unknown;
   readonly space: string;
-  readonly userId?: string;
-  readonly tenantId?: string;
-  readonly roles?: readonly string[];
 }
 
 interface DecisionBody {
   readonly approved: boolean;
-  readonly approverUserId: string;
-  readonly approverRoles?: readonly string[];
 }
 
-interface ExecuteBody {
-  readonly actorUserId: string;
-  readonly actorTenantId: string;
+interface AuthenticatedRequest {
+  aiContext?: AiAuthenticatedContext;
 }
 
 @Controller('v1/ai/approvals')
@@ -28,32 +31,64 @@ export class ToolApprovalController {
   constructor(private readonly approvals: ToolApprovalService) {}
 
   @Post()
-  request(@Body() body: ApprovalBody) {
+  request(
+    @Body() body: ApprovalBody,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const context = this.requireContext(request);
+
+    if (context.space !== body.space) {
+      throw new BadRequestException('AI context space does not match request');
+    }
+
     return this.approvals.request(body.toolName, body.input, {
-      space: body.space,
-      userId: body.userId,
-      tenantId: body.tenantId,
-      roles: body.roles ?? [],
+      space: context.space,
+      userId: context.userId,
+      tenantId: context.tenantId,
+      roles: context.roles,
       correlationId: 'approval-request',
     });
   }
 
   @Post(':id/decision')
-  decide(@Param('id') id: string, @Body() body: DecisionBody) {
+  decide(
+    @Param('id') id: string,
+    @Body() body: DecisionBody,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const context = this.requireContext(request);
+
     return this.approvals.decide(
       id,
       body.approved,
-      body.approverUserId,
-      body.approverRoles ?? [],
+      context.userId ?? '',
+      context.roles,
     );
   }
 
   @Post(':id/execute')
-  execute(@Param('id') id: string, @Body() body: ExecuteBody) {
+  execute(
+    @Param('id') id: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const context = this.requireContext(request);
+
     return this.approvals.executeApproved(
       id,
-      body.actorUserId,
-      body.actorTenantId,
+      context.userId ?? '',
+      context.tenantId,
     );
+  }
+
+  private requireContext(
+    request: AuthenticatedRequest,
+  ): AiAuthenticatedContext {
+    if (!request.aiContext?.space) {
+      throw new BadRequestException(
+        'Signed AI product context is required for approvals',
+      );
+    }
+
+    return request.aiContext;
   }
 }
