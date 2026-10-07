@@ -5,14 +5,18 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { timingSafeEqual } from 'node:crypto';
-import { Request } from 'express';
+
+interface RequestLike {
+  headers: Record<string, string | string[] | undefined>;
+}
 
 @Injectable()
 export class AiApiKeyGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest<Request>();
+    const request = context.switchToHttp().getRequest<RequestLike>();
     const configuredKey = process.env.AI_CORE_API_KEY;
-    const providedKey = request.header('x-ai-core-key');
+    const header = request.headers['x-ai-core-key'];
+    const providedKey = Array.isArray(header) ? header[0] : header;
 
     if (!configuredKey) {
       if (process.env.NODE_ENV === 'production') {
