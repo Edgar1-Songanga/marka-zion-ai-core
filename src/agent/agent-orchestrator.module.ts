@@ -7,6 +7,10 @@ import { UsageModule } from '../core/observability/usage.module';
 import { ModelLayerModule } from '../model-layer/model-layer.module';
 import { ToolEngineModule } from '../tools/tool-engine.module';
 import { AgentOrchestratorService } from './agent-orchestrator.service';
+import { AgentRegistryService } from './agent-registry.service';
+import { AgentFactoryService } from './agent-factory.service';
+import { SkillRegistryService } from './skill-registry.service';
+import { MissionOrchestratorService } from './mission-orchestrator.service';
 
 @Global()
 @Module({
@@ -19,7 +23,19 @@ import { AgentOrchestratorService } from './agent-orchestrator.service';
     QuotaModule,
     UsageModule,
   ],
-  providers: [AgentOrchestratorService],
-  exports: [AgentOrchestratorService],
+  providers: [
+    AgentOrchestratorService,
+    AgentRegistryService,
+    AgentFactoryService,
+    SkillRegistryService,
+    MissionOrchestratorService,
+  ],
+  exports: [
+    AgentOrchestratorService,
+    AgentRegistryService,
+    AgentFactoryService,
+    SkillRegistryService,
+    MissionOrchestratorService,
+  ],
 })
 export class AgentOrchestratorModule {}
