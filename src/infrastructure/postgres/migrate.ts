@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Client } from 'pg';
 
@@ -20,12 +20,51 @@ async function main(): Promise<void> {
   await client.connect();
 
   try {
-    const migration = await readFile(
-      join(process.cwd(), 'src', 'infrastructure', 'postgres', 'migrations', '001_ai_core.sql'),
-      'utf8',
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS ai_schema_migrations (
+        version TEXT PRIMARY KEY,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    const directory = join(
+      process.cwd(),
+      'src',
+      'infrastructure',
+      'postgres',
+      'migrations',
     );
 
-    await client.query(migration);
+    const files = (await readdir(directory))
+      .filter((file) => file.endsWith('.sql'))
+      .sort();
+
+    for (const file of files) {
+      const applied = await client.query(
+        'SELECT 1 FROM ai_schema_migrations WHERE version = $1',
+        [file],
+      );
+
+      if (applied.rowCount) {
+        continue;
+      }
+
+      const migration = await readFile(join(directory, file), 'utf8');
+
+      await client.query('BEGIN');
+
+      try {
+        await client.query(migration);
+        await client.query(
+          'INSERT INTO ai_schema_migrations (version) VALUES ($1)',
+          [file],
+        );
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      }
+    }
   } finally {
     await client.end();
   }
