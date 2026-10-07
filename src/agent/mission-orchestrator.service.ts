@@ -63,6 +63,32 @@ export class MissionOrchestratorService {
     throw new Error(`Mission is not resumable from ${state.status}`);
   }
 
+  async resumeOrStart(missionId: string, tenantId: string, userId: string): Promise<MissionState> {
+    const state = await this.repository.get(missionId, tenantId);
+    if (state.status === 'PLANNED') {
+      return this.start(missionId, tenantId, userId);
+    }
+    if (state.status === 'RUNNING' || state.status === 'VERIFYING') return state;
+    throw new Error(`Mission cannot execute from ${state.status}`);
+  }
+
+  async complete(missionId: string, tenantId: string, userId: string): Promise<MissionState> {
+    const state = await this.repository.get(missionId, tenantId);
+    if (state.status !== 'RUNNING' && state.status !== 'VERIFYING') {
+      throw new Error(`Mission cannot complete from ${state.status}`);
+    }
+    return this.repository.transition(missionId, tenantId, state.status, 'COMPLETED', 'MISSION_COMPLETED', userId);
+  }
+
+  async fail(missionId: string, tenantId: string, userId: string, reason: string): Promise<MissionState> {
+    const state = await this.repository.get(missionId, tenantId);
+    if (state.status === 'FAILED') return state;
+    if (state.status !== 'RUNNING' && state.status !== 'VERIFYING' && state.status !== 'WAITING_APPROVAL') {
+      throw new Error(`Mission cannot fail from ${state.status}`);
+    }
+    return this.repository.transition(missionId, tenantId, state.status, 'FAILED', reason, userId);
+  }
+
   instantiateTeam(state: MissionState) {
     return state.plan.team.members.map((member) => this.factory.create(member.agentId, {
       executionMode: state.plan.executionMode,
