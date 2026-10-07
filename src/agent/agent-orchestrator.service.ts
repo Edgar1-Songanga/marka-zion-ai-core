@@ -140,17 +140,16 @@ export class AgentOrchestratorService {
 
           pendingApprovals.push(approval.id);
 
-          messages.push({
-            role: 'tool',
-            toolCallId: toolCall.id,
-            toolName: toolCall.name,
-            content: JSON.stringify({
-              status: 'PENDING_APPROVAL',
-              approvalId: approval.id,
-            }),
-          });
-
-          continue;
+          return {
+            requestId,
+            provider: lastProvider,
+            model: lastModel,
+            inputTokens: totalInputTokens,
+            outputTokens: totalOutputTokens,
+            text: 'This action requires human approval before the agent can continue.',
+            steps: step,
+            pendingApprovals,
+          };
         }
 
         let output: unknown;
