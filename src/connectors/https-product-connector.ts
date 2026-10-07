@@ -1,6 +1,5 @@
 import {
   BadGatewayException,
-  Injectable,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ProductConnector, ProductConnectorRequest, ProductConnectorResponse } from './product-connector.types';
@@ -109,7 +108,11 @@ export class HttpsProductConnector implements ProductConnector {
         };
       }
 
-      throw new ServiceUnavailableException('Product API request failed.');
+      return {
+        success: false,
+        errorCode: 'UPSTREAM_UNAVAILABLE',
+        errorMessage: 'Product API request failed.',
+      };
     } finally {
       clearTimeout(timeout);
     }
