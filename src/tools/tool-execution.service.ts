@@ -72,6 +72,9 @@ export class ToolExecutionService {
     }
 
     const executeOnce = async (): Promise<ToolExecutionResult> => {
+      const controller = new AbortController();
+      const signal = request.context.signal ?? controller.signal;
+
       await this.audit.recordToolInvocation({
         event: 'AI_TOOL_STARTED',
         requestId: request.requestId,
@@ -87,8 +90,12 @@ export class ToolExecutionService {
 
       try {
         const data = await this.withTimeout(
-          tool.execute(request.input, request.context),
+          tool.execute(request.input, {
+            ...request.context,
+            signal,
+          }),
           this.config.requestTimeoutMs,
+          controller,
         );
 
         let serialized: string;
@@ -98,7 +105,11 @@ export class ToolExecutionService {
           throw new BadRequestException('Tool output is not serializable');
         }
 
-        if (serialized.length > this.config.maxToolOutputCharacters) {
+        if (serialized === undefined) {
+          throw new BadRequestException('Tool output is not serializable');
+        }
+
+        if (Buffer.byteLength(serialized, 'utf8') > this.config.maxToolOutputCharacters) {
           throw new BadRequestException('Tool output exceeds configured limit');
         }
 
@@ -147,6 +158,8 @@ export class ToolExecutionService {
         }
 
         throw new InternalServerErrorException('AI tool execution failed');
+      } finally {
+        controller.abort();
       }
     };
 
@@ -171,6 +184,7 @@ export class ToolExecutionService {
   private async withTimeout<T>(
     promise: Promise<T>,
     timeoutMs: number,
+    controller: AbortController,
   ): Promise<T> {
     let timer: NodeJS.Timeout | undefined;
 
@@ -178,10 +192,10 @@ export class ToolExecutionService {
       return await Promise.race([
         promise,
         new Promise<T>((_, reject) => {
-          timer = setTimeout(
-            () => reject(new GatewayTimeoutException('AI tool execution timed out')),
-            timeoutMs,
-          );
+          timer = setTimeout(() => {
+            controller.abort();
+            reject(new GatewayTimeoutException('AI tool execution timed out'));
+          }, timeoutMs);
         }),
       ]);
     } finally {
