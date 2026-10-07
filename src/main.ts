@@ -1,9 +1,12 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
+import {
+  NestExpressApplication,
+} from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bodyParser: true,
   });
 
@@ -17,7 +20,10 @@ async function bootstrap(): Promise<void> {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('Referrer-Policy', 'no-referrer');
-    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    res.setHeader(
+      'Permissions-Policy',
+      'camera=(), microphone=(), geolocation=()',
+    );
     res.setHeader('Cache-Control', 'no-store');
 
     if (process.env.NODE_ENV === 'production') {
