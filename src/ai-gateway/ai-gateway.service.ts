@@ -26,7 +26,7 @@ export class AiGatewayService {
 
     const requestId = request.context.requestId ?? randomUUID();
 
-    this.audit.recordAccepted(request, requestId);
+    await this.audit.recordAccepted(request, requestId);
 
     return {
       requestId,
