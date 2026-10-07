@@ -5,15 +5,26 @@ import { MemoryService } from '../memory/memory.service';
 import {
   ModelGenerationRequest,
   ModelGenerationResponse,
+  ModelMessage,
   ModelProvider,
+  ModelToolCall,
 } from './model-provider.types';
 import { SpacePolicyRegistry } from './space-policy.registry';
+
+interface ChatCompletionToolCall {
+  readonly id?: string;
+  readonly function?: {
+    readonly name?: string;
+    readonly arguments?: string;
+  };
+}
 
 interface ChatCompletionResponse {
   readonly choices?: readonly [
     {
       readonly message?: {
         readonly content?: string | null;
+        readonly tool_calls?: readonly ChatCompletionToolCall[];
       };
     },
   ];
@@ -54,6 +65,27 @@ export class VercelAiGatewayProvider implements ModelProvider {
 
     try {
       const context = await this.buildGroundedContext(request);
+      const systemInstruction =
+        (request.systemInstruction?.trim() ||
+          this.policies.resolve(request.space).systemInstruction) + context;
+
+      const messages = this.buildMessages(request, systemInstruction);
+      const body: Record<string, unknown> = {
+        model,
+        messages,
+      };
+
+      if (request.tools?.length) {
+        body.tools = request.tools.map((tool) => ({
+          type: 'function',
+          function: {
+            name: tool.name,
+            description: tool.description,
+            parameters: tool.parameters,
+          },
+        }));
+      }
+
       const response = await fetch(
         `${this.baseUrl}/chat/completions`,
         {
@@ -63,22 +95,7 @@ export class VercelAiGatewayProvider implements ModelProvider {
             'Content-Type': 'application/json',
             'X-Correlation-ID': request.correlationId,
           },
-          body: JSON.stringify({
-            model,
-            messages: [
-              {
-                role: 'system',
-                content:
-                  (request.systemInstruction?.trim() ||
-                    this.policies.resolve(request.space).systemInstruction) +
-                  context,
-              },
-              {
-                role: 'user',
-                content: request.input,
-              },
-            ],
-          }),
+          body: JSON.stringify(body),
           signal: controller.signal,
         },
       );
@@ -91,10 +108,21 @@ export class VercelAiGatewayProvider implements ModelProvider {
       }
 
       const payload = (await response.json()) as ChatCompletionResponse;
-      const text = payload.choices?.[0]?.message?.content;
+      const message = payload.choices?.[0]?.message;
+      const text = message?.content ?? '';
+      const toolCalls = (message?.tool_calls ?? [])
+        .filter(
+          (call): call is Required<ChatCompletionToolCall> =>
+            Boolean(call.id && call.function?.name),
+        )
+        .map<ModelToolCall>((call) => ({
+          id: call.id,
+          name: call.function.name,
+          arguments: this.parseToolArguments(call.function.arguments ?? '{}'),
+        }));
 
-      if (!text) {
-        throw new ServiceUnavailableException('AI provider returned no text');
+      if (!text && toolCalls.length === 0) {
+        throw new ServiceUnavailableException('AI provider returned no content');
       }
 
       return {
@@ -103,6 +131,7 @@ export class VercelAiGatewayProvider implements ModelProvider {
         text,
         inputTokens: payload.usage?.prompt_tokens,
         outputTokens: payload.usage?.completion_tokens,
+        toolCalls,
       };
     } catch (error) {
       if (error instanceof ServiceUnavailableException) {
@@ -112,6 +141,65 @@ export class VercelAiGatewayProvider implements ModelProvider {
       throw new ServiceUnavailableException('AI provider request failed');
     } finally {
       clearTimeout(timeout);
+    }
+  }
+
+  private buildMessages(
+    request: ModelGenerationRequest,
+    systemInstruction: string,
+  ): readonly Record<string, unknown>[] {
+    if (!request.messages?.length) {
+      return [
+        { role: 'system', content: systemInstruction },
+        { role: 'user', content: request.input },
+      ];
+    }
+
+    return [
+      { role: 'system', content: systemInstruction },
+      ...request.messages.map((message) => {
+        if (message.role === 'tool') {
+          return {
+            role: 'tool',
+            tool_call_id: message.toolCallId,
+            content: message.content,
+          };
+        }
+
+        if (message.role === 'assistant') {
+          return {
+            role: 'assistant',
+            content: message.content ?? null,
+            ...(message.toolCalls?.length
+              ? {
+                  tool_calls: message.toolCalls.map((toolCall) => ({
+                    id: toolCall.id,
+                    type: 'function',
+                    function: {
+                      name: toolCall.name,
+                      arguments: JSON.stringify(toolCall.arguments),
+                    },
+                  })),
+                }
+              : {}),
+          };
+        }
+
+        return {
+          role: message.role,
+          content: message.content,
+        };
+      }),
+    ];
+  }
+
+  private parseToolArguments(value: string): unknown {
+    try {
+      return JSON.parse(value);
+    } catch {
+      throw new ServiceUnavailableException(
+        'AI provider returned invalid tool arguments',
+      );
     }
   }
 
