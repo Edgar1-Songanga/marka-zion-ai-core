@@ -16,6 +16,7 @@ export type AgentFamily =
   | 'META_TRAINING';
 
 export type AgentExecutionMode = 'ADVISORY' | 'EXECUTION' | 'AUTONOMOUS';
+export type AgentRiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
 export interface AgentDefinition {
   readonly id: string;
@@ -29,6 +30,7 @@ export interface AgentDefinition {
   readonly accessLevels: readonly AgentAccessLevel[];
   readonly executionModes: readonly AgentExecutionMode[];
   readonly supervisorRole?: string;
+  readonly riskLevel: AgentRiskLevel;
 }
 
 export interface AgentSelectionRequest {
