@@ -22,6 +22,7 @@ export class MissionOrchestratorService {
     const team = {
       id: `team:${request.missionId}`,
       missionId: request.missionId,
+      space: request.space,
       objective: request.objective,
       members: candidates.map((agent) => ({ agentId: agent.id, responsibility: agent.description })),
     } as const;
@@ -98,6 +99,7 @@ export class MissionOrchestratorService {
 
   private validateRequest(request: MissionRequest): void {
     if (!request.missionId.trim() || request.missionId.length > 128) throw new Error('Mission ID must contain 1-128 characters');
+    if (!request.space.trim() || request.space.length > 128) throw new Error('Mission space must contain 1-128 characters');
     if (!request.objective.trim() || request.objective.length > 20000) throw new Error('Mission objective must contain 1-20000 characters');
     if (request.accessLevel === 'STANDARD' && request.executionMode === 'AUTONOMOUS') throw new Error('Autonomous missions require OWNER access');
     if (!request.tenantId || !request.userId) throw new Error('Mission requires authenticated tenant and user context');
