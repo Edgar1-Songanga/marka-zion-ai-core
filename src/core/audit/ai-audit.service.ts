@@ -8,6 +8,10 @@ export interface AiAuditEvent {
   readonly space: string;
   readonly operation: string;
   readonly userId?: string;
+  readonly tenantId?: string;
+  readonly toolName?: string;
+  readonly permission?: string;
+  readonly status?: string;
   readonly timestamp: string;
 }
 
@@ -16,16 +20,27 @@ export class AiAuditService {
   private readonly logger = new Logger(AiAuditService.name);
 
   recordAccepted(request: AiRequest, requestId: string): void {
-    const event: AiAuditEvent = {
+    this.write({
       event: 'AI_REQUEST_ACCEPTED',
       requestId,
       correlationId: request.context.correlationId,
       space: request.space,
       operation: request.operation,
       userId: request.context.userId,
-      timestamp: new Date().toISOString(),
-    };
+      tenantId: request.context.tenantId,
+    });
+  }
 
-    this.logger.log(JSON.stringify(event));
+  recordToolInvocation(event: Omit<AiAuditEvent, 'timestamp'>): void {
+    this.write(event);
+  }
+
+  private write(event: Omit<AiAuditEvent, 'timestamp'>): void {
+    this.logger.log(
+      JSON.stringify({
+        ...event,
+        timestamp: new Date().toISOString(),
+      }),
+    );
   }
 }
