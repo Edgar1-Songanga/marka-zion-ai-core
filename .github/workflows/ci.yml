@@ -5,10 +5,17 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-core-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -21,7 +28,19 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
 
       - name: Build
         run: npm run build
+
+      - name: Verify production artifacts
+        shell: bash
+        run: |
+          test -f dist/main.js
+          test -f dist/infrastructure/postgres/migrate.js
+          test -f dist/infrastructure/postgres/migrations/001_ai_core.sql
+          test -f dist/infrastructure/postgres/migrations/002_production_hardening.sql
+          test -f dist/infrastructure/postgres/migrations/003_enterprise_hardening.sql
