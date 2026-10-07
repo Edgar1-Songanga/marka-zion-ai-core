@@ -54,16 +54,27 @@ export class ConfiguredConnectorBootstrap implements OnModuleInit {
       );
     }
 
+    const timeoutMs = Number(process.env.AI_CONNECTOR_TIMEOUT_MS ?? 10000);
+    const maxResponseBytes = Number(
+      process.env.AI_CONNECTOR_MAX_RESPONSE_BYTES ?? 1000000,
+    );
+
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > 120000) {
+      throw new Error(`AI_${prefix}_CONNECTOR_TIMEOUT_MS is invalid`);
+    }
+
+    if (!Number.isFinite(maxResponseBytes) || maxResponseBytes <= 0 || maxResponseBytes > 10000000) {
+      throw new Error(`AI_${prefix}_CONNECTOR_MAX_RESPONSE_BYTES is invalid`);
+    }
+
     this.registry.register(
       new HttpsProductConnector({
         spaceId,
         baseUrl,
         serviceToken,
         allowedOperations,
-        timeoutMs: Number(process.env.AI_CONNECTOR_TIMEOUT_MS ?? 10000),
-        maxResponseBytes: Number(
-          process.env.AI_CONNECTOR_MAX_RESPONSE_BYTES ?? 1000000,
-        ),
+        timeoutMs,
+        maxResponseBytes,
       }),
     );
   }
