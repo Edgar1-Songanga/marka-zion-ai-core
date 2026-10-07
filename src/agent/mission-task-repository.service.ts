@@ -96,12 +96,12 @@ export class MissionTaskRepositoryService {
         );
       }
 
-      return this.list(missionId, client);
+      return this.list(missionId);
     });
   }
 
-  async list(missionId: string, client?: PoolClient): Promise<readonly MissionTask[]> {
-    const runner = client ?? this.db;
+  async list(missionId: string): Promise<readonly MissionTask[]> {
+    const runner = this.db;
     const result = await runner.query<TaskRow>(
       'SELECT task_id, mission_id, parent_task_id, agent_id, title, status, depends_on, input_json, output_json, attempt_count, max_attempts, last_error FROM ai_mission_tasks WHERE mission_id = $1 ORDER BY created_at, task_id',
       [missionId],
