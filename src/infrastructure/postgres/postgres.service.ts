@@ -11,7 +11,10 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
     ssl:
       process.env.DATABASE_SSL === 'false'
         ? false
-        : { rejectUnauthorized: false },
+        : {
+            rejectUnauthorized:
+              process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== 'false',
+          },
   });
 
   async onModuleInit(): Promise<void> {
