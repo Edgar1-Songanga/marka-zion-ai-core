@@ -5,6 +5,7 @@ import {
   ModelGenerationResponse,
   ModelProvider,
 } from './model-provider.types';
+import { SpacePolicyRegistry } from './space-policy.registry';
 
 interface ChatCompletionResponse {
   readonly choices?: readonly [{
@@ -59,8 +60,8 @@ export class VercelAiGatewayProvider implements ModelProvider {
               {
                 role: 'system',
                 content:
-              request.systemInstruction?.trim() ||
-              this.policies.resolve(request.space).systemInstruction,
+                  request.systemInstruction?.trim() ||
+                  this.policies.resolve(request.space).systemInstruction,
               },
               {
                 role: 'user',
