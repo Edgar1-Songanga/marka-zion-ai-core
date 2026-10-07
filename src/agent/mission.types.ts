@@ -13,6 +13,7 @@ export type MissionExecutionMode = 'ADVISORY' | 'EXECUTION' | 'AUTONOMOUS';
 
 export interface MissionRequest {
   readonly missionId: string;
+  readonly space: string;
   readonly objective: string;
   readonly tenantId: string;
   readonly userId: string;
