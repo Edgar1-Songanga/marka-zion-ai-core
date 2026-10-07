@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
+import { AiApiKeyGuard } from './ai-api-key.guard';
 import { AiSecurityService } from './ai-security.service';
 
 @Module({
-  providers: [AiSecurityService],
-  exports: [AiSecurityService],
+  providers: [AiApiKeyGuard, AiSecurityService],
+  exports: [AiApiKeyGuard, AiSecurityService],
 })
 export class AiSecurityModule {}
