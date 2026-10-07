@@ -21,7 +21,7 @@ async function main(): Promise<void> {
 
   try {
     const migration = await readFile(
-      join(__dirname, 'migrations', '001_ai_core.sql'),
+      join(process.cwd(), 'src', 'infrastructure', 'postgres', 'migrations', '001_ai_core.sql'),
       'utf8',
     );
 
