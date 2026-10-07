@@ -48,6 +48,7 @@ export interface ModelGenerationResponse {
   readonly inputTokens?: number;
   readonly outputTokens?: number;
   readonly toolCalls?: readonly ModelToolCall[];
+  readonly pendingApprovals?: readonly string[];
 }
 
 export interface ModelProvider {
