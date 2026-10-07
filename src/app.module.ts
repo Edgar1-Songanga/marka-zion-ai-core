@@ -11,6 +11,7 @@ import { SpacePolicyModule } from './model-layer/space-policy.module';
 import { AiGatewayModule } from './ai-gateway/ai-gateway.module';
 import { ToolEngineModule } from './tools/tool-engine.module';
 import { ProductConnectorModule } from './connectors/product-connector.module';
+import { HttpsProductConnectorModule } from './connectors/https-product-connector.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { ProductConnectorModule } from './connectors/product-connector.module';
     MemoryModule,
     ToolEngineModule,
     ProductConnectorModule,
+    HttpsProductConnectorModule,
     HealthModule,
     AiGatewayModule,
   ],
