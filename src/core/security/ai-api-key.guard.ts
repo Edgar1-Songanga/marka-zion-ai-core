@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { AiAuthenticatedContext } from './ai-authenticated-context';
+import { AiAccessLevel, AiAuthenticatedContext } from './ai-authenticated-context';
 
 interface RequestLike {
   headers: Record<string, string | string[] | undefined>;
@@ -21,6 +21,7 @@ interface SignedContextPayload {
   readonly exp: number;
   readonly iss: string;
   readonly aud?: string;
+  readonly accessLevel?: AiAccessLevel;
 }
 
 @Injectable()
@@ -63,6 +64,13 @@ export class AiApiKeyGuard implements CanActivate {
     }
   }
 
+  private get ownerIssuers(): readonly string[] {
+    return (process.env.AI_OWNER_CONTEXT_ISSUERS ?? '')
+      .split(',')
+      .map((issuer) => issuer.trim())
+      .filter(Boolean);
+  }
+
   private get allowedIssuers(): readonly string[] {
     return (process.env.AI_ALLOWED_CONTEXT_ISSUERS ?? '')
       .split(',')
@@ -88,6 +96,7 @@ export class AiApiKeyGuard implements CanActivate {
         roles: [],
         issuedAt: 0,
         expiresAt: 0,
+        accessLevel: 'STANDARD',
         issuer: 'development',
       };
     }
@@ -139,6 +148,7 @@ export class AiApiKeyGuard implements CanActivate {
       typeof payload.space !== 'string' ||
       typeof payload.tenantId !== 'string' ||
       typeof payload.iss !== 'string' ||
+      (payload.accessLevel !== undefined && payload.accessLevel !== 'STANDARD' && payload.accessLevel !== 'OWNER') ||
       !payload.space.trim() ||
       !payload.tenantId.trim() ||
       !payload.iss.trim() ||
@@ -150,7 +160,8 @@ export class AiApiKeyGuard implements CanActivate {
       payload.exp - payload.iat > 300 ||
       (process.env.NODE_ENV === 'production' && !expectedAudience) ||
       (expectedAudience !== undefined && payload.aud !== expectedAudience) ||
-      !this.allowedIssuers.includes(payload.iss)
+      !this.allowedIssuers.includes(payload.iss) ||
+      (payload.accessLevel === 'OWNER' && !this.ownerIssuers.includes(payload.iss))
     ) {
       throw new UnauthorizedException('Invalid or expired AI context');
     }
@@ -173,6 +184,7 @@ export class AiApiKeyGuard implements CanActivate {
       tenantId: payload.tenantId,
       userId: payload.userId,
       roles,
+      accessLevel: payload.accessLevel ?? 'STANDARD',
       issuedAt: payload.iat,
       expiresAt: payload.exp,
       issuer: payload.iss,
