@@ -83,3 +83,41 @@ CREATE TABLE IF NOT EXISTS ai_rate_limit_buckets (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (tenant_id, bucket_start)
 );
+
+
+CREATE TABLE IF NOT EXISTS ai_memory_records (
+  id UUID PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  space TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  conversation_id TEXT,
+  memory_key TEXT NOT NULL,
+  value TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMPTZ,
+  UNIQUE (tenant_id, space, user_id, memory_key)
+);
+
+CREATE INDEX IF NOT EXISTS ai_memory_recent_idx
+  ON ai_memory_records (tenant_id, space, user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS ai_knowledge_documents (
+  id UUID PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  space TEXT NOT NULL,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  source TEXT NOT NULL,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  search_vector TSVECTOR GENERATED ALWAYS AS (
+    to_tsvector('simple', coalesce(title, '') || ' ' || coalesce(content, ''))
+  ) STORED,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS ai_knowledge_search_idx
+  ON ai_knowledge_documents USING GIN (search_vector);
+
+CREATE INDEX IF NOT EXISTS ai_knowledge_scope_idx
+  ON ai_knowledge_documents (tenant_id, space);
