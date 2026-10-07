@@ -38,6 +38,7 @@ interface TaskRow {
   output_json: Record<string, unknown> | null;
   attempt_count: number;
   max_attempts: number;
+  last_error: string | null;
 }
 
 @Injectable()
@@ -102,7 +103,7 @@ export class MissionTaskRepositoryService {
   async list(missionId: string, client?: { query: <T = unknown>(text: string, values?: unknown[]) => Promise<{ rows: T[] }> }): Promise<readonly MissionTask[]> {
     const runner = client ?? this.db;
     const result = await runner.query<TaskRow>(
-      'SELECT task_id, mission_id, parent_task_id, agent_id, title, status, depends_on, input_json, output_json, attempt_count, max_attempts FROM ai_mission_tasks WHERE mission_id = $1 ORDER BY created_at, task_id',
+      'SELECT task_id, mission_id, parent_task_id, agent_id, title, status, depends_on, input_json, output_json, attempt_count, max_attempts, last_error FROM ai_mission_tasks WHERE mission_id = $1 ORDER BY created_at, task_id',
       [missionId],
     );
     return result.rows.map((row) => this.map(row));
@@ -141,10 +142,10 @@ export class MissionTaskRepositoryService {
       for (const row of result.rows) {
         const updated = await client.query<TaskRow>(
           `UPDATE ai_mission_tasks
-              SET status = 'RUNNING', attempt_count = attempt_count + 1, started_at = COALESCE(started_at, NOW()), updated_at = NOW()
+              SET status = 'RUNNING', attempt_count = attempt_count + 1, started_at = COALESCE(started_at, NOW()), lease_until = NOW() + ($2 || ' milliseconds')::interval, version = version + 1, updated_at = NOW()
             WHERE task_id = $1 AND status = 'READY'
           RETURNING task_id, mission_id, parent_task_id, agent_id, title, status, depends_on, input_json, output_json, attempt_count, max_attempts`,
-          [row.task_id],
+          [row.task_id, this.leaseMs],
         );
         const claimedRow = updated.rows[0];
         if (!claimedRow) continue;
@@ -171,7 +172,7 @@ export class MissionTaskRepositoryService {
   ): Promise<MissionTask> {
     return this.db.transaction(async (client) => {
       const current = await client.query<TaskRow>(
-        'SELECT task_id, mission_id, parent_task_id, agent_id, title, status, depends_on, input_json, output_json, attempt_count, max_attempts FROM ai_mission_tasks WHERE task_id = $1 FOR UPDATE',
+        'SELECT task_id, mission_id, parent_task_id, agent_id, title, status, depends_on, input_json, output_json, attempt_count, max_attempts, last_error FROM ai_mission_tasks WHERE task_id = $1 FOR UPDATE',
         [taskId],
       );
       const row = current.rows[0];
@@ -181,7 +182,7 @@ export class MissionTaskRepositoryService {
       const next: MissionTaskStatus = row.attempt_count < row.max_attempts ? 'READY' : 'FAILED';
       const updated = await client.query<TaskRow>(
         `UPDATE ai_mission_tasks
-            SET status = $2, output_json = $3::jsonb, updated_at = NOW(), completed_at = CASE WHEN $2 = 'FAILED' THEN NOW() ELSE completed_at END
+            SET status = $2, output_json = $3::jsonb, last_error = $3->>'message', lease_until = NULL, version = version + 1, updated_at = NOW(), completed_at = CASE WHEN $2 = 'FAILED' THEN NOW() ELSE completed_at END
           WHERE task_id = $1
           RETURNING task_id, mission_id, parent_task_id, agent_id, title, status, depends_on, input_json, output_json, attempt_count, max_attempts`,
         [taskId, next, JSON.stringify(output)],
@@ -198,6 +199,24 @@ export class MissionTaskRepositoryService {
 
   async cancel(taskId: string): Promise<MissionTask> {
     return this.transition(taskId, undefined, 'CANCELLED', 'TASK_CANCELLED');
+  }
+
+  async recoverExpired(missionId?: string): Promise<number> {
+    const result = await this.db.query(
+      `UPDATE ai_mission_tasks
+          SET status = CASE WHEN attempt_count < max_attempts THEN 'READY' ELSE 'FAILED' END,
+              last_error = COALESCE(last_error, 'Worker lease expired'),
+              lease_until = NULL,
+              version = version + 1,
+              updated_at = NOW(),
+              completed_at = CASE WHEN attempt_count >= max_attempts THEN NOW() ELSE completed_at END
+        WHERE status = 'RUNNING'
+          AND lease_until IS NOT NULL
+          AND lease_until <= NOW()
+          AND ($1::text IS NULL OR mission_id = $1)`,
+      [missionId ?? null],
+    );
+    return result.rowCount ?? 0;
   }
 
   async refreshReadyTasks(missionId: string): Promise<number> {
@@ -236,7 +255,7 @@ export class MissionTaskRepositoryService {
       }
       const updated = await client.query<TaskRow>(
         `UPDATE ai_mission_tasks
-            SET status = $2, output_json = COALESCE($3::jsonb, output_json), completed_at = CASE WHEN $2 IN ('COMPLETED','FAILED','CANCELLED') THEN NOW() ELSE completed_at END, updated_at = NOW()
+            SET status = $2, output_json = COALESCE($3::jsonb, output_json), lease_until = NULL, version = version + 1, completed_at = CASE WHEN $2 IN ('COMPLETED','FAILED','CANCELLED') THEN NOW() ELSE completed_at END, updated_at = NOW()
           WHERE task_id = $1
           RETURNING task_id, mission_id, parent_task_id, agent_id, title, status, depends_on, input_json, output_json, attempt_count, max_attempts`,
         [taskId, next, output ? JSON.stringify(output) : null],
@@ -249,6 +268,14 @@ export class MissionTaskRepositoryService {
       if (!updatedRow) throw new Error('Task update failed');
       return this.map(updatedRow);
     });
+  }
+
+  private get leaseMs(): number {
+    const value = Number(process.env.AI_MISSION_TASK_LEASE_MS ?? 300000);
+    if (!Number.isSafeInteger(value) || value < 1000 || value > 3600000) {
+      throw new Error('AI_MISSION_TASK_LEASE_MS must be between 1000 and 3600000');
+    }
+    return value;
   }
 
   private map(row: TaskRow): MissionTask {
