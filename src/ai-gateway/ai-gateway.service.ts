@@ -6,6 +6,7 @@ import { AiSecurityService } from '../core/security/ai-security.service';
 import { QuotaService } from '../core/quotas/quota.service';
 import { UsageService } from '../core/observability/usage.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
+import { AgentOrchestratorService } from '../agent/agent-orchestrator.service';
 import {
   ToolExecutionResult,
   ToolExecutionService,
@@ -28,6 +29,7 @@ export class AiGatewayService {
     private readonly quotas: QuotaService,
     private readonly usage: UsageService,
     private readonly knowledge: KnowledgeService,
+    private readonly agent: AgentOrchestratorService,
   ) {}
 
   async accept(request: AiRequest): Promise<AiResponse> {
@@ -57,59 +59,23 @@ export class AiGatewayService {
     }
 
     const requestId = request.context.requestId ?? randomUUID();
-    const startedAt = Date.now();
-
-    await this.quotas.reserveRequest(request.context.tenantId!);
     await this.audit.recordAccepted(request, requestId);
 
-    try {
-      const provider = this.providers.resolve();
-
-      const result = await provider.generate({
-        space: request.space,
-        input: request.input,
-        correlationId: request.context.correlationId,
-        tenantId: request.context.tenantId!,
-        userId: request.context.userId,
-        conversationId: request.conversationId,
-      });
-
-      await this.quotas.recordTokens(
-        request.context.tenantId!,
-        result.inputTokens,
-        result.outputTokens,
-      );
-
-      await this.usage.record({
-        tenantId: request.context.tenantId!,
-        space: request.space,
-        userId: request.context.userId,
+    const result = await this.agent.run({
+      ...request,
+      context: {
+        ...request.context,
         requestId,
-        provider: result.provider,
-        model: result.model,
-        inputTokens: result.inputTokens,
-        outputTokens: result.outputTokens,
-        durationMs: Date.now() - startedAt,
-        status: 'COMPLETED',
-      });
+      },
+    });
 
-      return {
-        requestId,
-        ...result,
-      };
-    } catch (error) {
-      await this.usage
-        .record({
-          tenantId: request.context.tenantId!,
-          space: request.space,
-          userId: request.context.userId,
-          requestId,
-          durationMs: Date.now() - startedAt,
-          status: 'FAILED',
-        })
-        .catch(() => undefined);
-
-      throw error;
+    return {
+      requestId,
+      provider: result.provider,
+      model: result.model,
+      text: result.text,
+      inputTokens: result.inputTokens,
+      outputTokens: result.outputTokens,
     }
   }
 
