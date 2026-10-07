@@ -2,24 +2,57 @@
 
 Independent, reusable AI infrastructure for ZION, MARKA, and future products.
 
-## Architecture
+## Non-negotiable architecture
 
-- AI Gateway
-- Model/provider abstraction
-- Knowledge and RAG
-- Memory
-- Tool engine
-- Security and permissions
-- Audit
-- Evaluation and observability
+The AI Core is a separate service. It **never connects directly to ZION or MARKA databases**.
 
-Product systems remain the source of truth. The AI Core integrates with product APIs and typed tools over HTTPS; it does not connect directly to ZION or MARKA databases.
+Integration is:
 
-## Initial spaces
+`Product API → AI Core HTTPS API → governed tools / knowledge / model providers`
+
+ZION and MARKA remain the source of truth for their own domains.
+
+## Current production foundation
+
+- **AI Gateway** — versioned HTTP boundary under `/api/v1/ai`.
+- **Security** — API authentication boundary that fails closed in production when credentials are not configured.
+- **Request governance** — correlation IDs, input-size limits, supported-space/operation validation.
+- **Audit** — accepted AI requests produce structured audit events.
+- **Model layer** — provider contract and registry; provider choice is replaceable.
+- **Knowledge/RAG boundary** — typed provider contract isolated from the gateway.
+- **Memory boundary** — typed store contract isolated from the gateway.
+- **Tool engine** — typed tools with ZION/MARKA space isolation and READ/WRITE/SENSITIVE_WRITE permissions.
+- **Observability boundary** — reserved for metrics, tracing, structured logs and operational telemetry.
+
+## AI spaces
 
 - `zion`
 - `marka`
 
-## Development principle
+Every request is explicitly scoped to one product space. Cross-product data access is not implicit.
 
-Production-grade architecture first. Provider/model choices remain replaceable, and deterministic product services remain authoritative for critical operations.
+## Financial and operational safety
+
+MARKA financial truth remains inside MARKA deterministic services. The AI Core must call authorized MARKA APIs/tools and must never calculate or mutate financial truth as an independent source of record.
+
+Likewise, ZION AI must rely on authorized ZION knowledge and product APIs for doctrine, governance, policy and other authoritative information.
+
+## Provider strategy
+
+The public AI Core contract is provider-neutral. Model/provider selection can change without requiring ZION or MARKA clients to change their integration contract.
+
+No model is trained from scratch in this foundation. Model selection, RAG, memory, tools, permissions and evaluation will be introduced behind stable interfaces.
+
+## Configuration
+
+Copy `.env.example` to the deployment environment. In production, `AI_CORE_API_KEY` must be configured.
+
+## Next engineering layers
+
+1. Provider adapter + current model routing configuration.
+2. Product connector framework for ZION and MARKA HTTPS APIs.
+3. Persistent memory and knowledge adapters.
+4. Idempotency and durable tool execution.
+5. Human approval workflow for sensitive writes.
+6. Evaluation, tracing, cost/latency telemetry and policy enforcement.
+7. Queue/worker execution for long-running operations.
