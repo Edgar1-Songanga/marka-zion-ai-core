@@ -152,7 +152,7 @@ export class ToolExecutionService {
 
     if (tool.permission !== 'READ') {
       return this.idempotency.run(
-        `tool:${request.context.space}:${name}`,
+        `tool:${request.context.tenantId ?? 'anonymous'}:${request.context.space}:${name}`,
         request.idempotencyKey!,
         {
           space: request.context.space,
