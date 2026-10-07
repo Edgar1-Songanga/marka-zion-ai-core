@@ -7,6 +7,7 @@ import {
 import { randomUUID } from 'node:crypto';
 import { PostgresService } from '../infrastructure/postgres/postgres.service';
 import { AiToolContext } from '../tools/tool.types';
+import { ToolExecutionService } from '../tools/tool-execution.service';
 import { ToolRegistryService } from '../tools/tool-registry.service';
 
 export interface ToolApprovalRequest {
@@ -44,6 +45,7 @@ export class ToolApprovalService {
   constructor(
     private readonly db: PostgresService,
     private readonly registry: ToolRegistryService,
+    private readonly execution: ToolExecutionService,
   ) {}
 
   async request(
@@ -63,12 +65,10 @@ export class ToolApprovalService {
       throw new ForbiddenException('Tool is not available in this AI space');
     }
 
-    if (!context.userId) {
-      throw new ForbiddenException('User context is required');
-    }
-
-    if (!context.tenantId) {
-      throw new ForbiddenException('Tenant context is required');
+    if (!context.userId || !context.tenantId) {
+      throw new ForbiddenException(
+        'User and tenant context are required for sensitive actions',
+      );
     }
 
     if (tool.validateInput && !tool.validateInput(input)) {
@@ -167,5 +167,83 @@ export class ToolApprovalService {
       status: nextStatus,
       expiresAt: row.expires_at.toISOString(),
     };
+  }
+
+  async executeApproved(
+    id: string,
+    actorUserId: string,
+    actorTenantId: string,
+  ) {
+    if (!actorUserId || !actorTenantId) {
+      throw new ForbiddenException('Authenticated actor context is required');
+    }
+
+    const result = await this.db.transaction(async (client) => {
+      const locked = await client.query<ApprovalRow>(
+        `SELECT id, space, tenant_id, user_id, tool_name, input_json, status, expires_at
+         FROM ai_approval_requests
+         WHERE id = $1
+         FOR UPDATE`,
+        [id],
+      );
+
+      const row = locked.rows[0];
+
+      if (!row) {
+        throw new NotFoundException('AI approval request not found');
+      }
+
+      if (row.tenant_id !== actorTenantId) {
+        throw new ForbiddenException('Approval request tenant mismatch');
+      }
+
+      if (row.status !== 'APPROVED') {
+        throw new BadRequestException('AI approval request is not approved');
+      }
+
+      if (row.expires_at <= new Date()) {
+        await client.query(
+          `UPDATE ai_approval_requests SET status = 'EXPIRED' WHERE id = $1`,
+          [id],
+        );
+        throw new BadRequestException('AI approval request has expired');
+      }
+
+      return row;
+    });
+
+    try {
+      const execution = await this.execution.executeApproved({
+        requestId: id,
+        toolName: result.tool_name,
+        input: result.input_json,
+        idempotencyKey: `approval:${id}`,
+        context: {
+          space: result.space,
+          tenantId: result.tenant_id ?? undefined,
+          userId: result.user_id ?? actorUserId,
+          roles: ['ai:write'],
+          correlationId: `approval:${id}`,
+        },
+      });
+
+      await this.db.query(
+        `UPDATE ai_approval_requests
+         SET status = 'EXECUTED', executed_at = NOW()
+         WHERE id = $1 AND status = 'APPROVED'`,
+        [id],
+      );
+
+      return execution;
+    } catch (error) {
+      await this.db.query(
+        `UPDATE ai_approval_requests
+         SET status = 'FAILED', executed_at = NOW()
+         WHERE id = $1 AND status = 'APPROVED'`,
+        [id],
+      );
+
+      throw error;
+    }
   }
 }
