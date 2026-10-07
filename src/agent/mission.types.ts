@@ -1,6 +1,15 @@
 import { AgentAccessLevel, AgentTeamDefinition } from './agent.types';
 
-export type MissionStatus = 'PLANNED' | 'RUNNING' | 'WAITING_APPROVAL' | 'VERIFYING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+export type MissionStatus =
+  | 'PLANNED'
+  | 'RUNNING'
+  | 'WAITING_APPROVAL'
+  | 'VERIFYING'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'CANCELLED';
+
+export type MissionExecutionMode = 'ADVISORY' | 'EXECUTION' | 'AUTONOMOUS';
 
 export interface MissionRequest {
   readonly missionId: string;
@@ -12,7 +21,7 @@ export interface MissionRequest {
   readonly preferredFamilies?: readonly string[];
   readonly maxAgents?: number;
   readonly maxBudgetTokens?: number;
-  readonly executionMode?: 'ADVISORY' | 'EXECUTION' | 'AUTONOMOUS';
+  readonly executionMode?: MissionExecutionMode;
 }
 
 export interface MissionPlan {
@@ -20,6 +29,9 @@ export interface MissionPlan {
   readonly objective: string;
   readonly team: AgentTeamDefinition;
   readonly phases: readonly string[];
+  readonly accessLevel: AgentAccessLevel;
+  readonly executionMode: MissionExecutionMode;
+  readonly budgetTokens?: number;
 }
 
 export interface MissionState {
