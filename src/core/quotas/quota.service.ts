@@ -7,11 +7,13 @@ import { PostgresService } from '../../infrastructure/postgres/postgres.service'
 
 @Injectable()
 export class QuotaService {
-  private readonly requestsPerMinute = Number(
-    process.env.AI_REQUESTS_PER_MINUTE ?? 60,
+  private readonly requestsPerMinute = this.parsePositive(
+    process.env.AI_REQUESTS_PER_MINUTE,
+    60,
   );
-  private readonly tokensPerDay = Number(
-    process.env.AI_TOKENS_PER_DAY ?? 2_000_000,
+  private readonly tokensPerDay = this.parsePositive(
+    process.env.AI_TOKENS_PER_DAY,
+    2_000_000,
   );
 
   constructor(private readonly db: PostgresService) {}
@@ -23,6 +25,7 @@ export class QuotaService {
           'Quota storage is not configured',
         );
       }
+
       return;
     }
 
@@ -33,32 +36,24 @@ export class QuotaService {
     );
 
     await this.db.transaction(async (client) => {
-      const minuteRow = await client.query<{ request_count: number }>(
-        `SELECT request_count
-         FROM ai_rate_limit_buckets
-         WHERE tenant_id = $1 AND bucket_start = $2
-         FOR UPDATE`,
-        [tenantId, minute],
-      );
-
-      const requestCount = minuteRow.rows[0]?.request_count ?? 0;
-
-      if (requestCount >= this.requestsPerMinute) {
-        throw new TooManyRequestsException(
-          'Tenant request rate limit exceeded',
-        );
-      }
-
-      await client.query(
+      const minuteResult = await client.query(
         `INSERT INTO ai_rate_limit_buckets
           (tenant_id, bucket_start, request_count, token_count)
          VALUES ($1, $2, 1, 0)
          ON CONFLICT (tenant_id, bucket_start)
          DO UPDATE SET
            request_count = ai_rate_limit_buckets.request_count + 1,
-           updated_at = NOW()`,
-        [tenantId, minute],
+           updated_at = NOW()
+         WHERE ai_rate_limit_buckets.request_count < $3
+         RETURNING request_count`,
+        [tenantId, minute, this.requestsPerMinute],
       );
+
+      if (minuteResult.rowCount !== 1) {
+        throw new TooManyRequestsException(
+          'Tenant request rate limit exceeded',
+        );
+      }
 
       const daily = await client.query<{ token_count: string }>(
         `SELECT COALESCE(SUM(token_count), 0)::text AS token_count
@@ -73,7 +68,11 @@ export class QuotaService {
     });
   }
 
-  async recordTokens(tenantId: string, inputTokens = 0, outputTokens = 0): Promise<void> {
+  async recordTokens(
+    tenantId: string,
+    inputTokens = 0,
+    outputTokens = 0,
+  ): Promise<void> {
     if (!process.env.DATABASE_URL) {
       return;
     }
@@ -92,5 +91,10 @@ export class QuotaService {
          updated_at = NOW()`,
       [tenantId, minute, tokens],
     );
+  }
+
+  private parsePositive(value: string | undefined, fallback: number): number {
+    const parsed = Number(value ?? fallback);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
   }
 }
