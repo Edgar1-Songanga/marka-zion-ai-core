@@ -100,14 +100,22 @@ export class VercelAiGatewayProvider implements ModelProvider {
         },
       );
 
-      if (!response.ok) {
-        const detail = await response.text();
-        throw new ServiceUnavailableException(
-          `AI provider request failed (${response.status}): ${detail.slice(0, 500)}`,
-        );
+      const responseText = await response.text();
+
+      if (Buffer.byteLength(responseText, 'utf8') > this.config.maxProviderResponseCharacters) {
+        throw new ServiceUnavailableException('AI provider response exceeded the configured limit');
       }
 
-      const payload = (await response.json()) as ChatCompletionResponse;
+      if (!response.ok) {
+        throw new ServiceUnavailableException(`AI provider request failed (${response.status})`);
+      }
+
+      let payload: ChatCompletionResponse;
+      try {
+        payload = JSON.parse(responseText) as ChatCompletionResponse;
+      } catch {
+        throw new ServiceUnavailableException('AI provider returned invalid JSON');
+      }
       const message = payload.choices?.[0]?.message;
       const text = message?.content ?? '';
       const toolCalls = (message?.tool_calls ?? [])
