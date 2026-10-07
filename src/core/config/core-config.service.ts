@@ -19,4 +19,9 @@ export class CoreConfigService {
     const value = Number(process.env.AI_MAX_INPUT_CHARACTERS ?? 20000);
     return Number.isFinite(value) && value > 0 ? value : 20000;
   }
+
+  get maxToolOutputCharacters(): number {
+    const value = Number(process.env.AI_MAX_TOOL_OUTPUT_CHARACTERS ?? 50000);
+    return Number.isFinite(value) && value > 0 ? value : 50000;
+  }
 }
