@@ -17,6 +17,10 @@ import { ToolRegistryService } from '../tools/tool-registry.service';
 
 export interface AgentResult {
   readonly requestId: string;
+  readonly provider: string;
+  readonly model: string;
+  readonly inputTokens: number;
+  readonly outputTokens: number;
   readonly text: string;
   readonly steps: number;
   readonly pendingApprovals: readonly string[];
@@ -54,6 +58,10 @@ export class AgentOrchestratorService {
 
     const provider = this.providers.resolve();
     const pendingApprovals: string[] = [];
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    let lastProvider = provider.name;
+    let lastModel = process.env.AI_MODEL ?? 'unknown';
 
     for (let step = 1; step <= this.config.maxAgentSteps; step += 1) {
       const startedAt = Date.now();
@@ -77,6 +85,11 @@ export class AgentOrchestratorService {
         result.outputTokens,
       );
 
+      totalInputTokens += result.inputTokens ?? 0;
+      totalOutputTokens += result.outputTokens ?? 0;
+      lastProvider = result.provider;
+      lastModel = result.model;
+
       await this.usage.record({
         tenantId: request.context.tenantId!,
         space: request.space,
@@ -93,6 +106,10 @@ export class AgentOrchestratorService {
       if (!result.toolCalls?.length) {
         return {
           requestId,
+          provider: lastProvider,
+          model: lastModel,
+          inputTokens: totalInputTokens,
+          outputTokens: totalOutputTokens,
           text: result.text,
           steps: step,
           pendingApprovals,
