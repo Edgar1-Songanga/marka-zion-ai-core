@@ -29,6 +29,7 @@ export class MissionOrchestratorService {
 
     const plan: MissionPlan = {
       missionId: request.missionId,
+      space: request.space,
       objective: request.objective,
       team,
       phases: ['REQUIREMENTS', 'PLANNING', 'DELEGATION', 'EXECUTION', 'VERIFICATION', 'DELIVERY'],
