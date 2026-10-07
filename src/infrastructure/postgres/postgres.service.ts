@@ -36,7 +36,7 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
     text: string,
     values?: readonly unknown[],
   ): Promise<{ rows: T[]; rowCount: number | null }> {
-    return this.pool.query<T>(text, values);
+    return this.pool.query<T>(text, values ? [...values] : undefined);
   }
 
   async transaction<T>(
