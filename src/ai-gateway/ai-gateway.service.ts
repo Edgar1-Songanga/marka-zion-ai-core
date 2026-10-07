@@ -34,6 +34,7 @@ export class AiGatewayService {
 
   async accept(request: AiRequest): Promise<AiResponse> {
     this.security.validateRequest(request);
+    this.requireTenant(request);
 
     const requestId = request.context.requestId ?? randomUUID();
 
@@ -51,6 +52,7 @@ export class AiGatewayService {
     request: AiRequest,
   ): Promise<ModelGenerationResponse & { requestId: string }> {
     this.security.validateRequest(request);
+    this.requireTenant(request);
 
     if (request.operation !== 'CHAT') {
       throw new BadRequestException(
@@ -84,6 +86,7 @@ export class AiGatewayService {
     idempotencyKey?: string,
   ): Promise<ToolExecutionResult> {
     this.security.validateRequest(request);
+    this.requireTenant(request);
 
     if (request.operation !== 'TOOL_CALL') {
       throw new BadRequestException(
@@ -134,8 +137,15 @@ export class AiGatewayService {
     });
   }
 
+  private requireTenant(request: AiRequest): void {
+    if (process.env.NODE_ENV === 'production' && !request.context.tenantId) {
+      throw new BadRequestException('Authenticated tenant context is required');
+    }
+  }
+
   async queryKnowledge(request: AiRequest) {
     this.security.validateRequest(request);
+    this.requireTenant(request);
 
     if (request.operation !== 'KNOWLEDGE_QUERY') {
       throw new BadRequestException(
