@@ -27,6 +27,7 @@ export interface MissionRequest {
 
 export interface MissionPlan {
   readonly missionId: string;
+  readonly space: string;
   readonly objective: string;
   readonly team: AgentTeamDefinition;
   readonly phases: readonly string[];
