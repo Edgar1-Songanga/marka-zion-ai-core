@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { PoolClient } from 'pg';
 import { PostgresService } from '../infrastructure/postgres/postgres.service';
-import { MissionStatus } from './mission.types';
 
 export type MissionTaskStatus =
   | 'PENDING'
@@ -100,7 +100,7 @@ export class MissionTaskRepositoryService {
     });
   }
 
-  async list(missionId: string, client?: { query: <T = unknown>(text: string, values?: unknown[]) => Promise<{ rows: T[] }> }): Promise<readonly MissionTask[]> {
+  async list(missionId: string, client?: PoolClient): Promise<readonly MissionTask[]> {
     const runner = client ?? this.db;
     const result = await runner.query<TaskRow>(
       'SELECT task_id, mission_id, parent_task_id, agent_id, title, status, depends_on, input_json, output_json, attempt_count, max_attempts, last_error FROM ai_mission_tasks WHERE mission_id = $1 ORDER BY created_at, task_id',
