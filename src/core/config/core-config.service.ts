@@ -1,0 +1,22 @@
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class CoreConfigService {
+  get nodeEnv(): string {
+    return process.env.NODE_ENV ?? 'development';
+  }
+
+  get serviceName(): string {
+    return process.env.SERVICE_NAME ?? 'marka-zion-ai-core';
+  }
+
+  get requestTimeoutMs(): number {
+    const value = Number(process.env.AI_REQUEST_TIMEOUT_MS ?? 30000);
+    return Number.isFinite(value) && value > 0 ? value : 30000;
+  }
+
+  get maxInputCharacters(): number {
+    const value = Number(process.env.AI_MAX_INPUT_CHARACTERS ?? 20000);
+    return Number.isFinite(value) && value > 0 ? value : 20000;
+  }
+}
