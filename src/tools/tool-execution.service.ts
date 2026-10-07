@@ -35,19 +35,37 @@ export class ToolExecutionService {
   ) {}
 
   async execute(request: ToolExecutionRequest): Promise<ToolExecutionResult> {
-    const name = request.toolName.trim();
+    const tool = this.registry.authorize(request.toolName, request.context);
+    return this.executeAuthorized(request, tool);
+  }
 
-    if (!name || name.length > 128) {
-      throw new BadRequestException('Invalid AI tool name');
+  async executeApproved(
+    request: ToolExecutionRequest,
+  ): Promise<ToolExecutionResult> {
+    const tool = this.registry.authorize(
+      request.toolName,
+      request.context,
+      true,
+    );
+
+    if (tool.permission !== 'SENSITIVE_WRITE') {
+      throw new BadRequestException('Approved execution requires SENSITIVE_WRITE');
     }
 
-    const tool = this.registry.authorize(name, request.context);
+    return this.executeAuthorized(request, tool);
+  }
+
+  private async executeAuthorized(
+    request: ToolExecutionRequest,
+    tool: ReturnType<ToolRegistryService['get']>,
+  ): Promise<ToolExecutionResult> {
+    const name = tool.name;
 
     if (tool.validateInput && !tool.validateInput(request.input)) {
       throw new BadRequestException('Invalid tool input');
     }
 
-    if (tool.permission === 'WRITE' && !request.idempotencyKey?.trim()) {
+    if (tool.permission !== 'READ' && !request.idempotencyKey?.trim()) {
       throw new BadRequestException(
         'Idempotency key is required for write-capable AI tools',
       );
@@ -84,7 +102,7 @@ export class ToolExecutionService {
           throw new BadRequestException('Tool output exceeds configured limit');
         }
 
-        this.audit.recordToolInvocation({
+        await this.audit.recordToolInvocation({
           event: 'AI_TOOL_COMPLETED',
           requestId: request.requestId,
           correlationId: request.context.correlationId,
@@ -104,18 +122,22 @@ export class ToolExecutionService {
           data,
         };
       } catch (error) {
-        this.audit.recordToolInvocation({
-          event: 'AI_TOOL_FAILED',
-          requestId: request.requestId,
-          correlationId: request.context.correlationId,
-          space: request.context.space,
-          operation: 'TOOL_CALL',
-          userId: request.context.userId,
-          tenantId: request.context.tenantId,
-          toolName: name,
-          permission: tool.permission,
-          status: 'FAILED',
-        });
+        try {
+          await this.audit.recordToolInvocation({
+            event: 'AI_TOOL_FAILED',
+            requestId: request.requestId,
+            correlationId: request.context.correlationId,
+            space: request.context.space,
+            operation: 'TOOL_CALL',
+            userId: request.context.userId,
+            tenantId: request.context.tenantId,
+            toolName: name,
+            permission: tool.permission,
+            status: 'FAILED',
+          });
+        } catch {
+          // Preserve the original execution error.
+        }
 
         if (
           error instanceof BadRequestException ||
@@ -128,7 +150,7 @@ export class ToolExecutionService {
       }
     };
 
-    if (tool.permission === 'WRITE') {
+    if (tool.permission !== 'READ') {
       return this.idempotency.run(
         `tool:${request.context.space}:${name}`,
         request.idempotencyKey!,
