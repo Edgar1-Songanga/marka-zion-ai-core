@@ -130,7 +130,7 @@ export class MissionExecutionService {
       const result = await this.agent.run({
         operation: 'CHAT',
         input: JSON.stringify(task.input),
-        space: 'agent-mission',
+        space: state.plan.space,
         context: {
           tenantId,
           userId,
