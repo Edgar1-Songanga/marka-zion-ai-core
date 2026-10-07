@@ -3,10 +3,16 @@ import { CoreConfigModule } from '../core/config/core-config.module';
 import { KnowledgeModule } from '../knowledge/knowledge.module';
 import { MemoryModule } from '../memory/memory.module';
 import { ModelProviderRegistry } from './model-provider.registry';
+import { SpacePolicyModule } from './space-policy.module';
 import { VercelAiGatewayProvider } from './vercel-ai-gateway.provider';
 
 @Module({
-  imports: [CoreConfigModule, KnowledgeModule, MemoryModule],
+  imports: [
+    CoreConfigModule,
+    KnowledgeModule,
+    MemoryModule,
+    SpacePolicyModule,
+  ],
   providers: [ModelProviderRegistry, VercelAiGatewayProvider],
   exports: [ModelProviderRegistry],
 })
