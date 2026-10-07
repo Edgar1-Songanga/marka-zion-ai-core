@@ -9,6 +9,7 @@ export interface AiToolContext {
   readonly roles: readonly string[];
   readonly correlationId: string;
   readonly idempotencyKey?: string;
+  readonly signal?: AbortSignal;
 }
 
 export interface AiToolDefinition<TInput = unknown, TOutput = unknown> {
