@@ -38,6 +38,12 @@ export class HealthController {
         );
       }
 
+      if (!process.env.AI_ALLOWED_CONTEXT_ISSUERS?.trim()) {
+        throw new ServiceUnavailableException(
+          'AI trusted context issuers are not configured',
+        );
+      }
+
       if (!process.env.AI_GATEWAY_API_KEY || !process.env.AI_MODEL) {
         throw new ServiceUnavailableException(
           'AI provider configuration is not complete',
