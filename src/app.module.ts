@@ -9,6 +9,7 @@ import { UsageModule } from './core/observability/usage.module';
 import { SpaceRegistryModule } from './core/spaces/space-registry.module';
 import { HealthModule } from './health/health.module';
 import { KnowledgeModule } from './knowledge/knowledge.module';
+import { KnowledgeAdminModule } from './knowledge/knowledge-admin.module';
 import { MemoryModule } from './memory/memory.module';
 import { ModelLayerModule } from './model-layer/model-layer.module';
 import { SpacePolicyModule } from './model-layer/space-policy.module';
@@ -33,6 +34,7 @@ import { ToolApprovalModule } from './approvals/tool-approval.module';
     ModelLayerModule,
     SpacePolicyModule,
     KnowledgeModule,
+    KnowledgeAdminModule,
     MemoryModule,
     ToolEngineModule,
     ToolApprovalModule,
