@@ -19,7 +19,7 @@ export class MissionOrchestratorService {
       requiredSkills: request.requiredSkills,
       accessLevel: request.accessLevel,
       executionMode: request.executionMode,
-      limit: request.accessLevel === 'OWNER' ? 16 : 8,
+      limit: Math.min(request.maxAgents ?? (request.accessLevel === 'OWNER' ? 16 : 8), request.accessLevel === 'OWNER' ? 32 : 16),
     });
     if (candidates.length === 0) throw new Error('No eligible specialist agents found');
 
