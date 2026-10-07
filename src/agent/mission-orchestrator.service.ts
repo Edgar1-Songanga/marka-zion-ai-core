@@ -15,6 +15,9 @@ export class MissionOrchestratorService {
       throw new Error('Autonomous missions require OWNER access');
     }
     if (!request.tenantId || !request.userId) throw new Error('Mission requires authenticated tenant and user context');
+    if ((request.maxAgents ?? 1) < 1 || (request.maxAgents ?? 1) > (request.accessLevel === 'OWNER' ? 32 : 16)) {
+      throw new Error('Mission maxAgents is outside the permitted range');
+    }
     const candidates = this.registry.select({
       requiredSkills: request.requiredSkills,
       accessLevel: request.accessLevel,
