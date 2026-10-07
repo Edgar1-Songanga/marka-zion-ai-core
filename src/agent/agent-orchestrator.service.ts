@@ -122,7 +122,7 @@ export class AgentOrchestratorService {
         toolCalls: result.toolCalls,
       });
 
-      for (const toolCall of result.toolCalls.slice(0, 8)) {
+      for (const toolCall of result.toolCalls.slice(0, this.config.maxToolCallsPerStep)) {
         const tool = this.registry.get(toolCall.name);
 
         if (tool.permission === 'SENSITIVE_WRITE') {
