@@ -74,6 +74,16 @@ export class ToolRegistryService {
     return tool;
   }
 
+  listDefinitions(space: AiSpace): readonly Pick<AiToolDefinition, 'name' | 'description' | 'inputSchema'>[] {
+    return [...this.tools.values()]
+      .filter((tool) => tool.spaces.includes(space) && tool.inputSchema)
+      .map((tool) => ({
+        name: tool.name,
+        description: tool.description,
+        inputSchema: tool.inputSchema,
+      }));
+  }
+
   list(space: AiSpace): readonly string[] {
     return [...this.tools.values()]
       .filter((tool) => tool.spaces.includes(space))
