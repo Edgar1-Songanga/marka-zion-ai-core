@@ -73,3 +73,13 @@ CREATE TABLE IF NOT EXISTS ai_usage_events (
 
 CREATE INDEX IF NOT EXISTS ai_usage_events_tenant_idx
   ON ai_usage_events (tenant_id, created_at);
+
+
+CREATE TABLE IF NOT EXISTS ai_rate_limit_buckets (
+  tenant_id TEXT NOT NULL,
+  bucket_start TIMESTAMPTZ NOT NULL,
+  request_count INTEGER NOT NULL DEFAULT 0,
+  token_count BIGINT NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (tenant_id, bucket_start)
+);
