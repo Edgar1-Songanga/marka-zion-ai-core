@@ -219,14 +219,18 @@ export class HttpsProductConnector implements ProductConnector {
   private isPrivateIp(value: string): boolean {
     if (isIP(value) === 4) {
       const parts = value.split('.').map(Number);
+      if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+        return true;
+      }
+      const [a, b] = parts;
 
       return (
-        parts[0] === 10 ||
-        parts[0] === 127 ||
-        parts[0] === 169 && parts[1] === 254 ||
-        parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31 ||
-        parts[0] === 192 && parts[1] === 168 ||
-        parts[0] === 0
+        a === 10 ||
+        a === 127 ||
+        (a === 169 && b === 254) ||
+        (a === 172 && b !== undefined && b >= 16 && b <= 31) ||
+        (a === 192 && b === 168) ||
+        a === 0
       );
     }
 
