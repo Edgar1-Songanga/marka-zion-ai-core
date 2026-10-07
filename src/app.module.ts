@@ -14,6 +14,7 @@ import { ToolEngineModule } from './tools/tool-engine.module';
 import { ProductConnectorModule } from './connectors/product-connector.module';
 import { HttpsProductConnectorModule } from './connectors/https-product-connector.module';
 import { PostgresModule } from './infrastructure/postgres/postgres.module';
+import { ToolApprovalModule } from './approvals/tool-approval.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { PostgresModule } from './infrastructure/postgres/postgres.module';
     KnowledgeModule,
     MemoryModule,
     ToolEngineModule,
+    ToolApprovalModule,
     ProductConnectorModule,
     HttpsProductConnectorModule,
     HealthModule,
