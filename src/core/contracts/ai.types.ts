@@ -10,7 +10,7 @@ export interface AiRequestContext {
   readonly tenantId?: string;
   readonly userId?: string;
   readonly roles: readonly string[];
-  readonly accessLevel: AiAccessLevel;
+  readonly accessLevel?: AiAccessLevel;
 }
 
 export interface AiRequest {
