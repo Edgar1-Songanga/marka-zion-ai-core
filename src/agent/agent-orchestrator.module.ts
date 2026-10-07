@@ -11,24 +11,18 @@ import { AgentRegistryService } from './agent-registry.service';
 import { AgentFactoryService } from './agent-factory.service';
 import { SkillRegistryService } from './skill-registry.service';
 import { MissionOrchestratorService } from './mission-orchestrator.service';
+import { MissionRepositoryService } from './mission-repository.service';
 
 @Global()
 @Module({
-  imports: [
-    CoreConfigModule,
-    ModelLayerModule,
-    ToolEngineModule,
-    ToolApprovalModule,
-    AiAuditModule,
-    QuotaModule,
-    UsageModule,
-  ],
+  imports: [CoreConfigModule, ModelLayerModule, ToolEngineModule, ToolApprovalModule, AiAuditModule, QuotaModule, UsageModule],
   providers: [
     AgentOrchestratorService,
     AgentRegistryService,
     AgentFactoryService,
     SkillRegistryService,
     MissionOrchestratorService,
+    MissionRepositoryService,
   ],
   exports: [
     AgentOrchestratorService,
@@ -36,6 +30,7 @@ import { MissionOrchestratorService } from './mission-orchestrator.service';
     AgentFactoryService,
     SkillRegistryService,
     MissionOrchestratorService,
+    MissionRepositoryService,
   ],
 })
 export class AgentOrchestratorModule {}
