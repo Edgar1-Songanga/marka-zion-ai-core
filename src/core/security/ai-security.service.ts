@@ -1,10 +1,14 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { AiRequest } from '../contracts/ai.types';
 import { CoreConfigService } from '../config/core-config.service';
+import { SpaceRegistryService } from '../spaces/space-registry.service';
 
 @Injectable()
 export class AiSecurityService {
-  constructor(private readonly config: CoreConfigService) {}
+  constructor(
+    private readonly config: CoreConfigService,
+    private readonly spaces: SpaceRegistryService,
+  ) {}
 
   validateRequest(request: AiRequest): void {
     if (!request.context.correlationId.trim()) {
@@ -21,8 +25,14 @@ export class AiSecurityService {
       throw new BadRequestException('input exceeds the configured limit');
     }
 
-    if (!['zion', 'marka'].includes(request.space)) {
-      throw new BadRequestException('unsupported AI space');
+    if (!request.space.trim()) {
+      throw new BadRequestException('space is required');
+    }
+
+    const space = this.spaces.resolve(request.space);
+
+    if (space.status !== 'ACTIVE') {
+      throw new BadRequestException('AI product space is not active');
     }
 
     if (!['CHAT', 'TOOL_CALL', 'KNOWLEDGE_QUERY'].includes(request.operation)) {
