@@ -65,6 +65,14 @@ export class SpaceRegistryService implements OnModuleInit {
   }
 
   async register(space: ProductSpace): Promise<void> {
+    if (!space.id.trim() || space.id.length > 128) {
+      throw new Error('Product space id must contain 1-128 characters');
+    }
+
+    if (!space.displayName.trim() || space.displayName.length > 200) {
+      throw new Error('Product space display name is invalid');
+    }
+
     this.spaces.set(space.id, space);
 
     if (!process.env.DATABASE_URL) {
