@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { AiAuditModule } from '../core/audit/ai-audit.module';
 import { AiSecurityModule } from '../core/security/ai-security.module';
+import { ToolEngineModule } from '../tools/tool-engine.module';
 import { AiGatewayController } from './ai-gateway.controller';
 import { AiGatewayService } from './ai-gateway.service';
 
 @Module({
-  imports: [AiAuditModule, AiSecurityModule],
+  imports: [AiAuditModule, AiSecurityModule, ToolEngineModule],
   controllers: [AiGatewayController],
   providers: [AiGatewayService],
   exports: [AiGatewayService],
