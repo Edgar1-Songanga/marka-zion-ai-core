@@ -54,7 +54,7 @@ export class ToolExecutionService {
     }
 
     const executeOnce = async (): Promise<ToolExecutionResult> => {
-      this.audit.recordToolInvocation({
+      await this.audit.recordToolInvocation({
         event: 'AI_TOOL_STARTED',
         requestId: request.requestId,
         correlationId: request.context.correlationId,
