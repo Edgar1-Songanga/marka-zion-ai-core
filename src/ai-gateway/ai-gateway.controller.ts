@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import {
+  BadRequestException,
   Body,
   Controller,
   Headers,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -12,6 +14,7 @@ import {
   AiResponse,
   AiSpace,
 } from '../core/contracts/ai.types';
+import { AiAuthenticatedContext } from '../core/security/ai-authenticated-context';
 import { AiApiKeyGuard } from '../core/security/ai-api-key.guard';
 import { ToolExecutionResult } from '../tools/tool-execution.service';
 import { ModelGenerationResponse } from '../model-layer/model-provider.types';
@@ -22,9 +25,10 @@ interface AiGatewayBody {
   readonly operation: AiOperation;
   readonly input: string;
   readonly conversationId?: string;
-  readonly userId?: string;
-  readonly tenantId?: string;
-  readonly roles?: readonly string[];
+}
+
+interface AuthenticatedRequest {
+  aiContext?: AiAuthenticatedContext;
 }
 
 @Controller('v1/ai')
@@ -35,42 +39,59 @@ export class AiGatewayController {
   @Post('requests')
   accept(
     @Body() body: AiGatewayBody,
-    @Headers('x-correlation-id') correlationId?: string,
-  ): AiResponse {
-    return this.gateway.accept(this.toRequest(body, correlationId));
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<AiResponse> {
+    return this.gateway.accept(this.toRequest(body, correlationId, request));
   }
 
   @Post('generate')
   async generate(
     @Body() body: AiGatewayBody,
-    @Headers('x-correlation-id') correlationId?: string,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Req() request: AuthenticatedRequest,
   ): Promise<ModelGenerationResponse & { requestId: string }> {
-    return this.gateway.generate(this.toRequest(body, correlationId));
+    return this.gateway.generate(this.toRequest(body, correlationId, request));
   }
 
   @Post('tools/execute')
   async executeTool(
     @Body() body: AiGatewayBody,
-    @Headers('x-correlation-id') correlationId?: string,
-    @Headers('x-idempotency-key') idempotencyKey?: string,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('x-idempotency-key') idempotencyKey: string | undefined,
+    @Req() request: AuthenticatedRequest,
   ): Promise<ToolExecutionResult> {
     return this.gateway.executeTool(
-      this.toRequest(body, correlationId),
+      this.toRequest(body, correlationId, request),
       idempotencyKey,
     );
   }
 
-  private toRequest(body: AiGatewayBody, correlationId?: string): AiRequest {
+  private toRequest(
+    body: AiGatewayBody,
+    correlationId: string | undefined,
+    request: AuthenticatedRequest,
+  ): AiRequest {
+    const authenticated = request.aiContext;
+
+    if (authenticated?.space && authenticated.space !== body.space) {
+      throw new BadRequestException('AI context space does not match request');
+    }
+
+    const useSignedContext = Boolean(authenticated?.space);
+
     return {
-      space: body.space,
+      space: useSignedContext ? authenticated!.space : body.space,
       operation: body.operation,
       input: body.input,
       conversationId: body.conversationId,
       context: {
         correlationId: correlationId?.trim() || randomUUID(),
-        userId: body.userId,
-        tenantId: body.tenantId,
-        roles: body.roles ?? [],
+        userId: useSignedContext ? authenticated!.userId : undefined,
+        tenantId: useSignedContext
+          ? authenticated!.tenantId
+          : undefined,
+        roles: useSignedContext ? authenticated!.roles : [],
       },
     };
   }
