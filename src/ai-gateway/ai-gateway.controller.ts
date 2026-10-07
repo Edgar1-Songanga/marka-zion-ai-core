@@ -52,8 +52,12 @@ export class AiGatewayController {
   async executeTool(
     @Body() body: AiGatewayBody,
     @Headers('x-correlation-id') correlationId?: string,
+    @Headers('x-idempotency-key') idempotencyKey?: string,
   ): Promise<ToolExecutionResult> {
-    return this.gateway.executeTool(this.toRequest(body, correlationId));
+    return this.gateway.executeTool(
+      this.toRequest(body, correlationId),
+      idempotencyKey,
+    );
   }
 
   private toRequest(body: AiGatewayBody, correlationId?: string): AiRequest {
