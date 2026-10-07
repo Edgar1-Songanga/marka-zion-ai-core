@@ -1,9 +1,14 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { VercelAiGatewayProvider } from './vercel-ai-gateway.provider';
 import { ModelProvider } from './model-provider.types';
 
 @Injectable()
 export class ModelProviderRegistry {
   private readonly providers = new Map<string, ModelProvider>();
+
+  constructor(vercelAiGatewayProvider: VercelAiGatewayProvider) {
+    this.register(vercelAiGatewayProvider);
+  }
 
   register(provider: ModelProvider): void {
     this.providers.set(provider.name, provider);
