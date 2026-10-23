@@ -18,10 +18,9 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
   });
 
   async onModuleInit(): Promise<void> {
+    // Missing production configuration is a readiness failure, not a boot failure.
+    // HealthController returns a specific 503 until DATABASE_URL is configured.
     if (!process.env.DATABASE_URL) {
-      if (process.env.NODE_ENV === 'production') {
-        throw new Error('DATABASE_URL is required in production');
-      }
       return;
     }
 

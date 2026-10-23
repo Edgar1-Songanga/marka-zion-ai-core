@@ -1,15 +1,11 @@
-import { CoreConfigService } from './core/config/core-config.service';
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import {
-  NestExpressApplication,
-} from '@nestjs/platform-express';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
-  const config = new CoreConfigService();
-  config.assertProductionReady();
-
+  // Keep liveness available when production integrations are not configured.
+  // Readiness reports missing dependencies; startup should not crash the function.
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bodyParser: true,
   });
