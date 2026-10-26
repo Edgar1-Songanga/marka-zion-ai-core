@@ -12,55 +12,53 @@ interface SpaceRow {
 @Injectable()
 export class SpaceRegistryService implements OnModuleInit {
   private readonly spaces = new Map<ProductSpaceId, ProductSpace>([
-    [
-      'zion',
-      {
-        id: 'zion',
-        displayName: 'ZION',
-        status: 'ACTIVE',
-        capabilities: ['knowledge', 'memory', 'tools'],
-      },
-    ],
-    [
-      'marka',
-      {
-        id: 'marka',
-        displayName: 'MARKA',
-        status: 'ACTIVE',
-        capabilities: ['knowledge', 'memory', 'tools'],
-      },
-    ],
+    ['zion', {
+      id: 'zion',
+      displayName: 'ZION',
+      status: 'ACTIVE',
+      capabilities: ['knowledge', 'memory', 'tools'],
+    }],
+    ['marka', {
+      id: 'marka',
+      displayName: 'MARKA',
+      status: 'ACTIVE',
+      capabilities: ['knowledge', 'memory', 'tools'],
+    }],
   ]);
 
   constructor(private readonly db: PostgresService) {}
 
   async onModuleInit(): Promise<void> {
-    if (!process.env.DATABASE_URL) {
-      return;
-    }
+    if (!process.env.DATABASE_URL) return;
 
-    await this.db.query(
-      `INSERT INTO ai_product_spaces
-        (id, display_name, status, capabilities)
-       VALUES
-        ('zion', 'ZION', 'ACTIVE', $1),
-        ('marka', 'MARKA', 'ACTIVE', $1)
-       ON CONFLICT (id) DO NOTHING`,
-      [JSON.stringify(['knowledge', 'memory', 'tools'])],
-    );
+    try {
+      await this.db.query(
+        `INSERT INTO ai_product_spaces
+          (id, display_name, status, capabilities)
+         VALUES
+          ('zion', 'ZION', 'ACTIVE', $1),
+          ('marka', 'MARKA', 'ACTIVE', $1)
+         ON CONFLICT (id) DO NOTHING`,
+        [JSON.stringify(['knowledge', 'memory', 'tools'])],
+      );
 
-    const result = await this.db.query<SpaceRow>(
-      `SELECT id, display_name, status, capabilities
-       FROM ai_product_spaces`,
-    );
+      const result = await this.db.query<SpaceRow>(
+        `SELECT id, display_name, status, capabilities
+         FROM ai_product_spaces`,
+      );
 
-    for (const row of result.rows) {
-      this.spaces.set(row.id, {
-        id: row.id,
-        displayName: row.display_name,
-        status: row.status,
-        capabilities: row.capabilities ?? [],
-      });
+      for (const row of result.rows) {
+        this.spaces.set(row.id, {
+          id: row.id,
+          displayName: row.display_name,
+          status: row.status,
+          capabilities: row.capabilities ?? [],
+        });
+      }
+    } catch (error) {
+      // Keep liveness and health diagnostics available if the DB is misconfigured.
+      // Readiness performs a live connection check and reports the dependency failure.
+      console.error('Could not load persisted product spaces; using built-in registry', error);
     }
   }
 
@@ -68,16 +66,12 @@ export class SpaceRegistryService implements OnModuleInit {
     if (!space.id.trim() || space.id.length > 128) {
       throw new Error('Product space id must contain 1-128 characters');
     }
-
     if (!space.displayName.trim() || space.displayName.length > 200) {
       throw new Error('Product space display name is invalid');
     }
 
     this.spaces.set(space.id, space);
-
-    if (!process.env.DATABASE_URL) {
-      return;
-    }
+    if (!process.env.DATABASE_URL) return;
 
     await this.db.query(
       `INSERT INTO ai_product_spaces
@@ -89,24 +83,13 @@ export class SpaceRegistryService implements OnModuleInit {
          status = EXCLUDED.status,
          capabilities = EXCLUDED.capabilities,
          updated_at = NOW()`,
-      [
-        space.id,
-        space.displayName,
-        space.status,
-        JSON.stringify(space.capabilities),
-      ],
+      [space.id, space.displayName, space.status, JSON.stringify(space.capabilities)],
     );
   }
 
   resolve(spaceId: ProductSpaceId): ProductSpace {
     const space = this.spaces.get(spaceId);
-
-    if (!space) {
-      throw new NotFoundException(
-        `AI product space not found: ${spaceId}`,
-      );
-    }
-
+    if (!space) throw new NotFoundException(`AI product space not found: ${spaceId}`);
     return space;
   }
 
