@@ -18,13 +18,16 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
   });
 
   async onModuleInit(): Promise<void> {
-    // Missing production configuration is a readiness failure, not a boot failure.
-    // HealthController returns a specific 503 until DATABASE_URL is configured.
-    if (!process.env.DATABASE_URL) {
-      return;
-    }
+    // Database connectivity is checked by /api/health/ready.
+    // A database outage must not prevent liveness and diagnostics from starting.
+    if (!process.env.DATABASE_URL) return;
 
-    await this.pool.query('SELECT 1');
+    try {
+      await this.pool.query('SELECT 1');
+    } catch (error) {
+      // Keep the API alive; readiness will return 503 when the query fails.
+      console.error('PostgreSQL startup probe failed; service remains live', error);
+    }
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -38,9 +41,7 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
     return this.pool.query<T>(text, values ? [...values] : undefined);
   }
 
-  async transaction<T>(
-    callback: (client: PoolClient) => Promise<T>,
-  ): Promise<T> {
+  async transaction<T>(callback: (client: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.pool.connect();
 
     try {
