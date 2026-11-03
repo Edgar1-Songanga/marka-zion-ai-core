@@ -75,6 +75,7 @@ export class AgentOrchestratorService {
       const result = await provider.generate({
         space: request.space,
         input: request.input,
+        systemInstruction: request.systemInstruction,
         correlationId: request.context.correlationId,
         tenantId: request.context.tenantId!,
         userId: request.context.userId,
