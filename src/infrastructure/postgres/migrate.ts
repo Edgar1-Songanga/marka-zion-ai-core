@@ -1,6 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Client } from 'pg';
+import { getPostgresConnectionConfig } from './postgres-connection';
 
 const MIGRATION_LOCK_ID = 73829104;
 
@@ -8,13 +9,7 @@ async function main(): Promise<void> {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error('DATABASE_URL is required');
 
-  const client = new Client({
-    connectionString,
-    ssl:
-      process.env.DATABASE_SSL === 'false'
-        ? false
-        : { rejectUnauthorized: process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== 'false' },
-  });
+  const client = new Client(getPostgresConnectionConfig());
 
   await client.connect();
 
