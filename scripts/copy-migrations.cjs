@@ -11,7 +11,7 @@ if (!existsSync(source)) {
 mkdirSync(destination, { recursive: true });
 cpSync(source, destination, { recursive: true, force: true });
 
-const migrations = readdirSync(destination).filter((name) => /^\\d+_[a-z0-9_-]+\\.sql$/.test(name));
+const migrations = readdirSync(destination).filter((name) => /^\d+_[a-z0-9_-]+\.sql$/.test(name));
 if (migrations.length !== 9) {
   throw new Error('Expected 9 SQL migrations in production output; found ' + migrations.length);
 }
