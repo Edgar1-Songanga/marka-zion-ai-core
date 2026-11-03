@@ -56,3 +56,5 @@ jobs:
           test -f dist/infrastructure/postgres/migrations/005_mission_runtime.sql
           test -f dist/infrastructure/postgres/migrations/006_mission_tasks.sql
           test -f dist/infrastructure/postgres/migrations/007_task_leases.sql
+          test -f dist/infrastructure/postgres/migrations/008_parent_task_fk_index.sql
+          test -f dist/infrastructure/postgres/migrations/009_server_only_rls_hardening.sql
