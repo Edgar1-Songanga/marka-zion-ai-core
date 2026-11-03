@@ -37,7 +37,11 @@ interface ChatCompletionResponse {
 
 @Injectable()
 export class VercelAiGatewayProvider implements ModelProvider {
-  readonly name = 'vercel-ai-gateway';
+  get name(): string {
+    return process.env.AI_PROVIDER?.trim() === 'cloudflare-workers-ai'
+      ? 'cloudflare-workers-ai'
+      : 'vercel-ai-gateway';
+  }
   private readonly logger = new Logger(VercelAiGatewayProvider.name);
 
   constructor(
@@ -52,14 +56,16 @@ export class VercelAiGatewayProvider implements ModelProvider {
   ): Promise<ModelGenerationResponse> {
     // Vercel-hosted production uses its deployment OIDC token. Local and
     // external runtimes may use a dedicated AI Gateway API key instead.
+    const useCloudflare = process.env.AI_PROVIDER?.trim() === 'cloudflare-workers-ai';
     const model = process.env.AI_MODEL?.trim();
-    let authToken =
-      process.env.AI_GATEWAY_API_KEY?.trim() ||
-      process.env.VERCEL_OIDC_TOKEN?.trim();
+    let authToken = useCloudflare
+      ? process.env.CLOUDFLARE_API_TOKEN?.trim()
+      : process.env.AI_GATEWAY_API_KEY?.trim() ||
+        process.env.VERCEL_OIDC_TOKEN?.trim();
 
     // Vercel Functions expose the current OIDC token in the request context,
     // not reliably as a process environment variable at runtime.
-    if (!authToken && process.env.VERCEL) {
+    if (!useCloudflare && !authToken && process.env.VERCEL) {
       try {
         authToken = await getVercelOidcToken();
       } catch {
@@ -67,9 +73,11 @@ export class VercelAiGatewayProvider implements ModelProvider {
       }
     }
 
-    if (!authToken || !model) {
+    if (!authToken || !model || (useCloudflare && !process.env.CLOUDFLARE_ACCOUNT_ID?.trim())) {
       throw new ServiceUnavailableException(
-        'AI Gateway provider requires a valid runtime OIDC token or AI_GATEWAY_API_KEY, plus AI_MODEL',
+        useCloudflare
+          ? 'Cloudflare Workers AI requires CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID and AI_MODEL'
+          : 'AI Gateway provider requires a valid runtime OIDC token or AI_GATEWAY_API_KEY, plus AI_MODEL',
       );
     }
 
@@ -113,13 +121,17 @@ export class VercelAiGatewayProvider implements ModelProvider {
         model,
         messages,
         max_tokens: maxOutputTokens,
-        // Restrict inference to Bedrock. AWS states prompts and outputs are not
-        // used to train foundation models; this does not assert zero retention.
-        providerOptions: {
-          gateway: {
-            only: ['bedrock'],
-          },
-        },
+        // Keep the existing Bedrock-only routing for Vercel AI Gateway.
+        // Cloudflare Workers AI is called directly and does not accept this option.
+        ...(!useCloudflare
+          ? {
+              providerOptions: {
+                gateway: {
+                  only: ['bedrock'],
+                },
+              },
+            }
+          : {}),
       };
 
       if (request.tools?.length) {
@@ -361,6 +373,14 @@ export class VercelAiGatewayProvider implements ModelProvider {
   }
 
   private get baseUrl(): string {
+    if (process.env.AI_PROVIDER?.trim() === 'cloudflare-workers-ai') {
+      const accountId = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
+      if (!accountId || !/^[a-f0-9]{32}$/i.test(accountId)) {
+        throw new ServiceUnavailableException('CLOUDFLARE_ACCOUNT_ID must be a 32-character hexadecimal account ID');
+      }
+      return `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1`;
+    }
+
     return (
       process.env.AI_GATEWAY_BASE_URL ??
       'https://ai-gateway.vercel.sh/v1'
