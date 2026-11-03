@@ -53,7 +53,6 @@ export class CoreConfigService {
       'AI_CONTEXT_SIGNING_SECRET',
       'AI_ALLOWED_CONTEXT_ISSUERS',
       'AI_CONTEXT_AUDIENCE',
-      'AI_GATEWAY_API_KEY',
       'AI_MODEL',
       'DATABASE_URL',
     ];
