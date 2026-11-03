@@ -48,12 +48,16 @@ export class VercelAiGatewayProvider implements ModelProvider {
   async generate(
     request: ModelGenerationRequest,
   ): Promise<ModelGenerationResponse> {
-    const apiKey = process.env.AI_GATEWAY_API_KEY;
-    const model = process.env.AI_MODEL;
+    // Vercel-hosted production uses its deployment OIDC token. Local and
+    // external runtimes may use a dedicated AI Gateway API key instead.
+    const authToken =
+      process.env.AI_GATEWAY_API_KEY?.trim() ||
+      process.env.VERCEL_OIDC_TOKEN?.trim();
+    const model = process.env.AI_MODEL?.trim();
 
-    if (!apiKey || !model) {
+    if (!authToken || !model) {
       throw new ServiceUnavailableException(
-        'AI Gateway provider requires AI_GATEWAY_API_KEY and AI_MODEL',
+        'AI Gateway provider requires VERCEL_OIDC_TOKEN or AI_GATEWAY_API_KEY, plus AI_MODEL',
       );
     }
 
