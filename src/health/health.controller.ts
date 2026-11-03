@@ -1,4 +1,5 @@
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
+import { getVercelOidcToken } from '@vercel/oidc';
 import { PostgresService } from '../infrastructure/postgres/postgres.service';
 
 @Controller('health')
@@ -44,9 +45,19 @@ export class HealthController {
         );
       }
 
-      const hasGatewayAuth =
+      let hasGatewayAuth =
         Boolean(process.env.AI_GATEWAY_API_KEY?.trim()) ||
         Boolean(process.env.VERCEL_OIDC_TOKEN?.trim());
+
+      // In deployed Vercel Functions, OIDC is request-scoped and may not be
+      // exposed through process.env. Resolve it inside this health request.
+      if (!hasGatewayAuth && process.env.VERCEL) {
+        try {
+          hasGatewayAuth = Boolean(await getVercelOidcToken());
+        } catch {
+          hasGatewayAuth = false;
+        }
+      }
 
       if (!hasGatewayAuth || !process.env.AI_MODEL?.trim()) {
         throw new ServiceUnavailableException(
