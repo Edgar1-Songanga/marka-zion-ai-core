@@ -64,6 +64,15 @@ export class CoreConfigService {
       }
     }
 
+    if (
+      !process.env.AI_GATEWAY_API_KEY?.trim() &&
+      !process.env.VERCEL_OIDC_TOKEN?.trim()
+    ) {
+      throw new Error(
+        'Missing AI Gateway authentication: configure VERCEL_OIDC_TOKEN or AI_GATEWAY_API_KEY',
+      );
+    }
+
     if (process.env.AI_CORE_API_KEY!.length < 32) {
       throw new Error('AI_CORE_API_KEY must be at least 32 characters');
     }
