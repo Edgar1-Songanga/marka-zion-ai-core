@@ -1,4 +1,4 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { getVercelOidcToken } from '@vercel/oidc';
 import { CoreConfigService } from '../core/config/core-config.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
@@ -38,6 +38,7 @@ interface ChatCompletionResponse {
 @Injectable()
 export class VercelAiGatewayProvider implements ModelProvider {
   readonly name = 'vercel-ai-gateway';
+  private readonly logger = new Logger(VercelAiGatewayProvider.name);
 
   constructor(
     private readonly config: CoreConfigService,
@@ -73,9 +74,13 @@ export class VercelAiGatewayProvider implements ModelProvider {
     }
 
     const controller = new AbortController();
+    const timeoutMs = Math.max(
+      1000,
+      Math.min(request.timeoutMs ?? this.config.requestTimeoutMs, this.config.requestTimeoutMs),
+    );
     const timeout = setTimeout(
       () => controller.abort(),
-      this.config.requestTimeoutMs,
+      timeoutMs,
     );
 
     try {
@@ -149,6 +154,12 @@ export class VercelAiGatewayProvider implements ModelProvider {
       }
 
       if (!response.ok) {
+        this.logger.error(JSON.stringify({
+          event: 'AI_MODEL_PROVIDER_HTTP_ERROR',
+          correlationId: request.correlationId,
+          provider: this.name,
+          statusCode: response.status,
+        }));
         throw new ServiceUnavailableException(`AI provider request failed (${response.status})`);
       }
 
@@ -200,6 +211,13 @@ export class VercelAiGatewayProvider implements ModelProvider {
         toolCalls,
       };
     } catch (error) {
+      this.logger.error(JSON.stringify({
+        event: 'AI_MODEL_PROVIDER_FAILURE',
+        correlationId: request.correlationId,
+        provider: this.name,
+        failureType: controller.signal.aborted ? 'timeout' : 'provider_or_network',
+        errorName: error instanceof Error ? error.name : 'UnknownError',
+      }));
       if (error instanceof ServiceUnavailableException) {
         throw error;
       }
