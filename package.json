@@ -6,10 +6,10 @@
   "scripts": {
     "build": "nest build && node scripts/copy-migrations.cjs",
     "typecheck": "tsc --noEmit",
-    "start": "node dist/main.js",
+    "start": "node dist/src/main.js",
     "start:dev": "nest start --watch",
-    "start:worker": "node dist/worker.js",
-    "db:migrate": "node dist/infrastructure/postgres/migrate.js"
+    "start:worker": "node dist/src/worker.js",
+    "db:migrate": "node dist/src/infrastructure/postgres/migrate.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.2.6",
