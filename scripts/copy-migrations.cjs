@@ -2,7 +2,7 @@ const { cpSync, existsSync, mkdirSync, readdirSync } = require('node:fs');
 const { dirname, join } = require('node:path');
 
 const source = join(process.cwd(), 'src', 'infrastructure', 'postgres', 'migrations');
-const destination = join(process.cwd(), 'dist', 'infrastructure', 'postgres', 'migrations');
+const destination = join(process.cwd(), 'dist', 'src', 'infrastructure', 'postgres', 'migrations');
 
 if (!existsSync(source)) {
   throw new Error('Source SQL migrations directory is missing: ' + source);
