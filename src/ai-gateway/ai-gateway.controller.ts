@@ -24,6 +24,7 @@ interface AiGatewayBody {
   readonly space: AiSpace;
   readonly operation: AiOperation;
   readonly input: string;
+  readonly systemContext?: string;
   readonly conversationId?: string;
   readonly userId?: string;
   readonly tenantId?: string;
@@ -100,6 +101,9 @@ export class AiGatewayController {
       space: useSignedContext ? authenticated!.space : body.space,
       operation: body.operation,
       input: body.input,
+      ...(typeof body.systemContext === 'string' && body.systemContext.trim().length <= 12000
+        ? { systemInstruction: body.systemContext.trim() }
+        : {}),
       conversationId: body.conversationId,
       context: {
         correlationId: correlationId?.trim() || randomUUID(),
