@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  ServiceUnavailableException,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
@@ -43,6 +44,9 @@ export class AgentOrchestratorService {
 
   async run(request: AiRequest): Promise<AgentResult> {
     const requestId = request.context.requestId ?? randomUUID();
+    // AI Core runs in a 30-second Vercel Function. Reserve time for audit,
+    // quota and response serialization; model/tool loops must not consume it all.
+    const deadlineAt = Date.now() + 22_000;
     const messages: ModelMessage[] = [
       {
         role: 'user',
@@ -72,11 +76,19 @@ export class AgentOrchestratorService {
       // Enforce a platform-wide ceiling across MARKA and ZION, not just per tenant.
       await this.quotas.reserveRequest(PLATFORM_QUOTA_TENANT_ID);
 
+      const remainingMs = deadlineAt - Date.now();
+      if (remainingMs < 2500) {
+        throw new ServiceUnavailableException(
+          'AI request exceeded its end-to-end execution budget',
+        );
+      }
+
       const result = await provider.generate({
         space: request.space,
         input: request.input,
         systemInstruction: request.systemInstruction,
         correlationId: request.context.correlationId,
+        timeoutMs: Math.min(this.config.requestTimeoutMs, remainingMs - 1500),
         tenantId: request.context.tenantId!,
         userId: request.context.userId,
         conversationId: request.conversationId,
