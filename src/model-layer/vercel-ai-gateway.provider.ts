@@ -97,8 +97,8 @@ export class VercelAiGatewayProvider implements ModelProvider {
         model,
         messages,
         max_tokens: maxOutputTokens,
-        // Restrict inference to Bedrock. AWS states Bedrock prompts and outputs
-        // are not used to train models; retention remains subject to model policy.
+        // Restrict inference to Bedrock. AWS states prompts and outputs are not
+        // used to train foundation models; this does not assert zero retention.
         providerOptions: {
           gateway: {
             only: ['bedrock'],
