@@ -1,4 +1,5 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { getVercelOidcToken } from '@vercel/oidc';
 import { CoreConfigService } from '../core/config/core-config.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import { MemoryService } from '../memory/memory.service';
@@ -50,14 +51,24 @@ export class VercelAiGatewayProvider implements ModelProvider {
   ): Promise<ModelGenerationResponse> {
     // Vercel-hosted production uses its deployment OIDC token. Local and
     // external runtimes may use a dedicated AI Gateway API key instead.
-    const authToken =
+    const model = process.env.AI_MODEL?.trim();
+    let authToken =
       process.env.AI_GATEWAY_API_KEY?.trim() ||
       process.env.VERCEL_OIDC_TOKEN?.trim();
-    const model = process.env.AI_MODEL?.trim();
+
+    // Vercel Functions expose the current OIDC token in the request context,
+    // not reliably as a process environment variable at runtime.
+    if (!authToken && process.env.VERCEL) {
+      try {
+        authToken = await getVercelOidcToken();
+      } catch {
+        authToken = undefined;
+      }
+    }
 
     if (!authToken || !model) {
       throw new ServiceUnavailableException(
-        'AI Gateway provider requires VERCEL_OIDC_TOKEN or AI_GATEWAY_API_KEY, plus AI_MODEL',
+        'AI Gateway provider requires a valid runtime OIDC token or AI_GATEWAY_API_KEY, plus AI_MODEL',
       );
     }
 
