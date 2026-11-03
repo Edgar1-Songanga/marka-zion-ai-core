@@ -44,7 +44,11 @@ export class HealthController {
         );
       }
 
-      if (!process.env.AI_GATEWAY_API_KEY || !process.env.AI_MODEL) {
+      const hasGatewayAuth =
+        Boolean(process.env.AI_GATEWAY_API_KEY?.trim()) ||
+        Boolean(process.env.VERCEL_OIDC_TOKEN?.trim());
+
+      if (!hasGatewayAuth || !process.env.AI_MODEL?.trim()) {
         throw new ServiceUnavailableException(
           'AI provider configuration is not complete',
         );
