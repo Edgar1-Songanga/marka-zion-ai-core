@@ -15,6 +15,8 @@ import { ModelMessage, ModelToolDefinition } from '../model-layer/model-provider
 import { ToolExecutionService } from '../tools/tool-execution.service';
 import { ToolRegistryService } from '../tools/tool-registry.service';
 
+const PLATFORM_QUOTA_TENANT_ID = '__platform_global__';
+
 export interface AgentResult {
   readonly requestId: string;
   readonly provider: string;
@@ -67,6 +69,8 @@ export class AgentOrchestratorService {
       const startedAt = Date.now();
 
       await this.quotas.reserveRequest(request.context.tenantId!);
+      // Enforce a platform-wide ceiling across MARKA and ZION, not just per tenant.
+      await this.quotas.reserveRequest(PLATFORM_QUOTA_TENANT_ID);
 
       const result = await provider.generate({
         space: request.space,
@@ -81,6 +85,11 @@ export class AgentOrchestratorService {
 
       await this.quotas.recordTokens(
         request.context.tenantId!,
+        result.inputTokens,
+        result.outputTokens,
+      );
+      await this.quotas.recordTokens(
+        PLATFORM_QUOTA_TENANT_ID,
         result.inputTokens,
         result.outputTokens,
       );
