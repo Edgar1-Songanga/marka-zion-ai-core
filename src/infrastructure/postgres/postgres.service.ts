@@ -1,37 +1,8 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Pool, PoolClient, QueryResultRow } from 'pg';
-import { SUPABASE_ROOT_2021_CA } from './supabase-root-ca';
+import { getPostgresConnectionConfig } from './postgres-connection';
 
 function createPool() {
-  const rawConnectionString = process.env.DATABASE_URL;
-  const sslEnabled =
-    process.env.NODE_ENV === 'production' ||
-    process.env.DATABASE_SSL !== 'false';
-
-  let connectionString = rawConnectionString;
-  if (rawConnectionString && sslEnabled) {
-    const url = new URL(rawConnectionString);
-
-    // Supabase session mode is capped at a small fixed number of clients.
-    // Vercel serverless functions must use Supavisor transaction mode instead.
-    // The pooler host and credentials stay the same; only the port changes.
-    if (
-      url.hostname.endsWith('.pooler.supabase.com') &&
-      (!url.port || url.port === '5432')
-    ) {
-      url.port = '6543';
-    }
-
-    // node-postgres lets ssl query parameters override the explicit ssl object.
-    // Remove them so the Supabase CA below is always used for verification.
-    for (const key of [...url.searchParams.keys()]) {
-      if (key.toLowerCase().startsWith('ssl')) {
-        url.searchParams.delete(key);
-      }
-    }
-    connectionString = url.toString();
-  }
-
   const configuredMax = Number(process.env.DATABASE_POOL_MAX ?? 1);
   const max =
     Number.isFinite(configuredMax) && configuredMax >= 1
@@ -39,17 +10,11 @@ function createPool() {
       : 1;
 
   return new Pool({
-    connectionString,
+    ...getPostgresConnectionConfig(),
     max,
     idleTimeoutMillis: 10000,
     connectionTimeoutMillis: 10000,
     keepAlive: true,
-    ssl: sslEnabled
-      ? {
-          ca: SUPABASE_ROOT_2021_CA,
-          rejectUnauthorized: true,
-        }
-      : false,
   });
 }
 
