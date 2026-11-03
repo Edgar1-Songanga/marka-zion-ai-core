@@ -34,6 +34,8 @@ export interface ModelGenerationRequest {
   readonly input: string;
   readonly systemInstruction?: string;
   readonly correlationId: string;
+  /** Per-call timeout bounded by the remaining end-to-end request budget. */
+  readonly timeoutMs?: number;
   readonly tenantId: string;
   readonly userId?: string;
   readonly conversationId?: string;
