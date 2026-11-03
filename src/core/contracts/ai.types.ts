@@ -17,6 +17,7 @@ export interface AiRequest {
   readonly space: AiSpace;
   readonly operation: AiOperation;
   readonly input: string;
+  readonly systemInstruction?: string;
   readonly conversationId?: string;
   readonly context: AiRequestContext;
 }
