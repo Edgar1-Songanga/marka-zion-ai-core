@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, HttpException } from '@nestjs/common';
 import { AiAuditService } from '../core/audit/ai-audit.service';
 import { AiRequest, AiResponse } from '../core/contracts/ai.types';
 import { AiSecurityService } from '../core/security/ai-security.service';
@@ -21,6 +21,8 @@ export interface AiToolCallEnvelope {
 
 @Injectable()
 export class AiGatewayService {
+  private readonly logger = new Logger(AiGatewayService.name);
+
   constructor(
     private readonly security: AiSecurityService,
     private readonly audit: AiAuditService,
@@ -63,13 +65,26 @@ export class AiGatewayService {
     const requestId = request.context.requestId ?? randomUUID();
     await this.audit.recordAccepted(request, requestId);
 
-    const result = await this.agent.run({
-      ...request,
-      context: {
-        ...request.context,
+    let result;
+    try {
+      result = await this.agent.run({
+        ...request,
+        context: {
+          ...request.context,
+          requestId,
+        },
+      });
+    } catch (error) {
+      this.logger.error(JSON.stringify({
+        event: 'AI_GENERATION_FAILED',
         requestId,
-      },
-    });
+        correlationId: request.context.correlationId,
+        space: request.space,
+        statusCode: error instanceof HttpException ? error.getStatus() : 500,
+        errorName: error instanceof Error ? error.name : 'UnknownError',
+      }));
+      throw error;
+    }
 
     return {
       requestId,
