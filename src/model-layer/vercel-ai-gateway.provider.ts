@@ -121,13 +121,15 @@ export class VercelAiGatewayProvider implements ModelProvider {
         model,
         messages,
         max_tokens: maxOutputTokens,
-        // Keep the existing Bedrock-only routing for Vercel AI Gateway.
+        // Preserve the production zero-data-retention requirement without
+        // pinning routing to Bedrock. Vercel OIDC / Token Pass credentials can
+        // return HTTP 403 when providerOptions.gateway.only is specified.
         // Cloudflare Workers AI is called directly and does not accept this option.
         ...(!useCloudflare
           ? {
               providerOptions: {
                 gateway: {
-                  only: ['bedrock'],
+                  zeroDataRetention: true,
                 },
               },
             }
