@@ -63,12 +63,16 @@ export class CoreConfigService {
       }
     }
 
+    // In Vercel Functions, OIDC is injected into each request context and
+    // must be resolved at request time via @vercel/oidc. It is not guaranteed
+    // to exist as a process environment variable during runtime startup.
     if (
       !process.env.AI_GATEWAY_API_KEY?.trim() &&
-      !process.env.VERCEL_OIDC_TOKEN?.trim()
+      !process.env.VERCEL_OIDC_TOKEN?.trim() &&
+      !process.env.VERCEL
     ) {
       throw new Error(
-        'Missing AI Gateway authentication: configure VERCEL_OIDC_TOKEN or AI_GATEWAY_API_KEY',
+        'Missing AI Gateway authentication: configure AI_GATEWAY_API_KEY or run on Vercel with OIDC enabled',
       );
     }
 
