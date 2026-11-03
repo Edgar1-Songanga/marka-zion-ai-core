@@ -161,12 +161,22 @@ export class VercelAiGatewayProvider implements ModelProvider {
         throw new ServiceUnavailableException('AI provider returned no content');
       }
 
+      const estimatedInputTokens = Math.ceil(
+        Buffer.byteLength(JSON.stringify(messages), 'utf8') / 4,
+      );
+      const estimatedOutputTokens = Math.ceil(
+        Buffer.byteLength(
+          JSON.stringify({ text, toolCalls }),
+          'utf8',
+        ) / 4,
+      );
+
       return {
         provider: this.name,
         model,
         text,
-        inputTokens: payload.usage?.prompt_tokens,
-        outputTokens: payload.usage?.completion_tokens,
+        inputTokens: payload.usage?.prompt_tokens ?? estimatedInputTokens,
+        outputTokens: payload.usage?.completion_tokens ?? estimatedOutputTokens,
         toolCalls,
       };
     } catch (error) {
