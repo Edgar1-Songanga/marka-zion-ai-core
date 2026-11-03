@@ -91,7 +91,7 @@ export class VercelAiGatewayProvider implements ModelProvider {
         {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${apiKey}`,
+            Authorization: `Bearer ${authToken}`,
             'Content-Type': 'application/json',
             'X-Correlation-ID': request.correlationId,
           },
