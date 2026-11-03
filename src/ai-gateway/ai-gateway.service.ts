@@ -6,7 +6,7 @@ import { AiSecurityService } from '../core/security/ai-security.service';
 import { QuotaService } from '../core/quotas/quota.service';
 import { UsageService } from '../core/observability/usage.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
-import { AgentOrchestratorService } from '../agent/agent-orchestrator.service';
+import { AgentOrchestratorService, type AgentResult } from '../agent/agent-orchestrator.service';
 import {
   ToolExecutionResult,
   ToolExecutionService,
