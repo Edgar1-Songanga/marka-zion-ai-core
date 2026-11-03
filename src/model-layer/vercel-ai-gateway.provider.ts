@@ -74,9 +74,27 @@ export class VercelAiGatewayProvider implements ModelProvider {
           this.policies.resolve(request.space).systemInstruction) + context;
 
       const messages = this.buildMessages(request, systemInstruction);
+      const configuredMaxTokens = Number(process.env.AI_MAX_OUTPUT_TOKENS ?? 1024);
+      const maxOutputTokens =
+        Number.isFinite(configuredMaxTokens) &&
+        configuredMaxTokens >= 128 &&
+        configuredMaxTokens <= 4096
+          ? Math.floor(configuredMaxTokens)
+          : 1024;
+
       const body: Record<string, unknown> = {
         model,
         messages,
+        max_tokens: maxOutputTokens,
+        // Keep product prompts out of provider training and require a ZDR route.
+        // Bedrock is the approved provider for the initial open-weight model.
+        providerOptions: {
+          gateway: {
+            only: ['bedrock'],
+            zeroDataRetention: true,
+            disallowPromptTraining: true,
+          },
+        },
       };
 
       if (request.tools?.length) {
