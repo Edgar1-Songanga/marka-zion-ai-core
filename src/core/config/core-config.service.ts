@@ -11,7 +11,9 @@ export class CoreConfigService {
   }
 
   get requestTimeoutMs(): number {
-    return this.boundedNumber('AI_REQUEST_TIMEOUT_MS', 30000, 1000, 120000);
+    // Keep model calls below the Vercel serverless execution ceiling. The agent
+    // also enforces a request-wide deadline across multi-step tool cycles.
+    return this.boundedNumber('AI_REQUEST_TIMEOUT_MS', 18000, 1000, 20000);
   }
 
   get maxInputCharacters(): number {
