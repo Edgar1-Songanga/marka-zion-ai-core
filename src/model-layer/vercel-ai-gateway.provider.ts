@@ -86,12 +86,11 @@ export class VercelAiGatewayProvider implements ModelProvider {
         model,
         messages,
         max_tokens: maxOutputTokens,
-        // Keep product prompts out of provider training and require a ZDR route.
+        // Restrict inference to Bedrock and explicitly opt out of prompt training.
         // Bedrock is the approved provider for the initial open-weight model.
         providerOptions: {
           gateway: {
             only: ['bedrock'],
-            zeroDataRetention: true,
             disallowPromptTraining: true,
           },
         },
