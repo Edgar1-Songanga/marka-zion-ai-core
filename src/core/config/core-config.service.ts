@@ -50,6 +50,11 @@ export class CoreConfigService {
       return;
     }
 
+    const provider = process.env.AI_PROVIDER?.trim() || 'vercel-ai-gateway';
+    if (!['vercel-ai-gateway', 'cloudflare-workers-ai'].includes(provider)) {
+      throw new Error('AI_PROVIDER must be vercel-ai-gateway or cloudflare-workers-ai');
+    }
+
     const required = [
       'AI_CORE_API_KEY',
       'AI_CONTEXT_SIGNING_SECRET',
@@ -57,6 +62,9 @@ export class CoreConfigService {
       'AI_CONTEXT_AUDIENCE',
       'AI_MODEL',
       'DATABASE_URL',
+      ...(provider === 'cloudflare-workers-ai'
+        ? ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID']
+        : []),
     ];
 
     for (const key of required) {
@@ -69,6 +77,7 @@ export class CoreConfigService {
     // must be resolved at request time via @vercel/oidc. It is not guaranteed
     // to exist as a process environment variable during runtime startup.
     if (
+      provider === 'vercel-ai-gateway' &&
       !process.env.AI_GATEWAY_API_KEY?.trim() &&
       !process.env.VERCEL_OIDC_TOKEN?.trim() &&
       !process.env.VERCEL
@@ -90,12 +99,17 @@ export class CoreConfigService {
       throw new Error('DATABASE_SSL=false is forbidden in production');
     }
 
-    const gatewayUrl = new URL(
-      process.env.AI_GATEWAY_BASE_URL ?? 'https://ai-gateway.vercel.sh/v1',
-    );
-
-    if (gatewayUrl.protocol !== 'https:') {
-      throw new Error('AI_GATEWAY_BASE_URL must use HTTPS in production');
+    if (provider === 'cloudflare-workers-ai') {
+      if (!/^[a-f0-9]{32}$/i.test(process.env.CLOUDFLARE_ACCOUNT_ID!.trim())) {
+        throw new Error('CLOUDFLARE_ACCOUNT_ID must be a 32-character hexadecimal account ID');
+      }
+    } else {
+      const gatewayUrl = new URL(
+        process.env.AI_GATEWAY_BASE_URL ?? 'https://ai-gateway.vercel.sh/v1',
+      );
+      if (gatewayUrl.protocol !== 'https:') {
+        throw new Error('AI_GATEWAY_BASE_URL must use HTTPS in production');
+      }
     }
   }
 
