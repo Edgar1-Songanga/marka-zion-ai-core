@@ -11,6 +11,17 @@ function createPool() {
   let connectionString = rawConnectionString;
   if (rawConnectionString && sslEnabled) {
     const url = new URL(rawConnectionString);
+
+    // Supabase session mode is capped at a small fixed number of clients.
+    // Vercel serverless functions must use Supavisor transaction mode instead.
+    // The pooler host and credentials stay the same; only the port changes.
+    if (
+      url.hostname.endsWith('.pooler.supabase.com') &&
+      (!url.port || url.port === '5432')
+    ) {
+      url.port = '6543';
+    }
+
     // node-postgres lets ssl query parameters override the explicit ssl object.
     // Remove them so the Supabase CA below is always used for verification.
     for (const key of [...url.searchParams.keys()]) {
