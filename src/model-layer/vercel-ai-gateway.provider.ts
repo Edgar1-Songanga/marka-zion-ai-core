@@ -86,12 +86,11 @@ export class VercelAiGatewayProvider implements ModelProvider {
         model,
         messages,
         max_tokens: maxOutputTokens,
-        // Restrict inference to Bedrock and explicitly opt out of prompt training.
-        // Bedrock is the approved provider for the initial open-weight model.
+        // Restrict inference to Bedrock. AWS states Bedrock prompts and outputs
+        // are not used to train models; retention remains subject to model policy.
         providerOptions: {
           gateway: {
             only: ['bedrock'],
-            disallowPromptTraining: true,
           },
         },
       };
