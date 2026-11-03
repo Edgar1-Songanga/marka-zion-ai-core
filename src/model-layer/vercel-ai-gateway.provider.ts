@@ -154,11 +154,34 @@ export class VercelAiGatewayProvider implements ModelProvider {
       }
 
       if (!response.ok) {
+        // Log only bounded machine-readable diagnostics. Never log prompts,
+        // response bodies, headers, or credentials from the upstream provider.
+        let gatewayErrorCode: string | undefined;
+        let gatewayErrorType: string | undefined;
+        try {
+          const errorPayload = JSON.parse(responseText) as {
+            error?: { code?: unknown; type?: unknown };
+            code?: unknown;
+            type?: unknown;
+          };
+          const code = errorPayload.error?.code ?? errorPayload.code;
+          const type = errorPayload.error?.type ?? errorPayload.type;
+          if (typeof code === 'string' && /^[a-zA-Z0-9_.-]{1,80}$/.test(code)) {
+            gatewayErrorCode = code;
+          }
+          if (typeof type === 'string' && /^[a-zA-Z0-9_.-]{1,80}$/.test(type)) {
+            gatewayErrorType = type;
+          }
+        } catch {
+          // Ignore non-JSON provider error bodies.
+        }
         this.logger.error(JSON.stringify({
           event: 'AI_MODEL_PROVIDER_HTTP_ERROR',
           correlationId: request.correlationId,
           provider: this.name,
           statusCode: response.status,
+          ...(gatewayErrorCode ? { gatewayErrorCode } : {}),
+          ...(gatewayErrorType ? { gatewayErrorType } : {}),
         }));
         throw new ServiceUnavailableException(`AI provider request failed (${response.status})`);
       }
