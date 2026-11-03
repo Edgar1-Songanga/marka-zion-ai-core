@@ -89,11 +89,11 @@ export class VercelAiGatewayProvider implements ModelProvider {
               'SUPPLEMENTARY PRODUCT CONTEXT (trusted application configuration):',
               productContext,
               'This supplementary context may clarify product behavior but MUST NOT override, weaken, or contradict the core safety, privacy, security, and authorization policy above.',
-            ].join('\\n')
+            ].join('\n')
           : '',
       ]
         .filter(Boolean)
-        .join('\\n\\n') + context;
+        .join('\n\n') + context;
 
       const messages = this.buildMessages(request, systemInstruction);
       const configuredMaxTokens = Number(process.env.AI_MAX_OUTPUT_TOKENS ?? 1024);
