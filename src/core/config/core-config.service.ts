@@ -51,8 +51,8 @@ export class CoreConfigService {
     }
 
     const provider = process.env.AI_PROVIDER?.trim() || 'vercel-ai-gateway';
-    if (!['vercel-ai-gateway', 'cloudflare-workers-ai'].includes(provider)) {
-      throw new Error('AI_PROVIDER must be vercel-ai-gateway or cloudflare-workers-ai');
+    if (!['vercel-ai-gateway', 'cloudflare-workers-ai', 'openai-compatible'].includes(provider)) {
+      throw new Error('AI_PROVIDER must be vercel-ai-gateway, cloudflare-workers-ai or openai-compatible');
     }
 
     const required = [
@@ -64,7 +64,9 @@ export class CoreConfigService {
       'DATABASE_URL',
       ...(provider === 'cloudflare-workers-ai'
         ? ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID']
-        : []),
+        : provider === 'openai-compatible'
+          ? ['AI_INFERENCE_BASE_URL']
+          : []),
     ];
 
     for (const key of required) {
@@ -103,13 +105,14 @@ export class CoreConfigService {
       if (!/^[a-f0-9]{32}$/i.test(process.env.CLOUDFLARE_ACCOUNT_ID!.trim())) {
         throw new Error('CLOUDFLARE_ACCOUNT_ID must be a 32-character hexadecimal account ID');
       }
-    } else {
-      const gatewayUrl = new URL(
-        process.env.AI_GATEWAY_BASE_URL ?? 'https://ai-gateway.vercel.sh/v1',
-      );
-      if (gatewayUrl.protocol !== 'https:') {
-        throw new Error('AI_GATEWAY_BASE_URL must use HTTPS in production');
+    } else if (provider === 'openai-compatible') {
+      const inferenceUrl = new URL(process.env.AI_INFERENCE_BASE_URL!);
+      if (inferenceUrl.protocol !== 'https:') {
+        throw new Error('AI_INFERENCE_BASE_URL must use HTTPS in production');
       }
+    } else {
+      const gatewayUrl = new URL(process.env.AI_GATEWAY_BASE_URL ?? 'https://ai-gateway.vercel.sh/v1');
+      if (gatewayUrl.protocol !== 'https:') throw new Error('AI_GATEWAY_BASE_URL must use HTTPS in production');
     }
   }
 
