@@ -38,9 +38,8 @@ interface ChatCompletionResponse {
 @Injectable()
 export class VercelAiGatewayProvider implements ModelProvider {
   get name(): string {
-    return process.env.AI_PROVIDER?.trim() === 'cloudflare-workers-ai'
-      ? 'cloudflare-workers-ai'
-      : 'vercel-ai-gateway';
+    const mode = process.env.AI_PROVIDER?.trim() || 'vercel-ai-gateway';
+    return mode;
   }
   private readonly logger = new Logger(VercelAiGatewayProvider.name);
 
@@ -56,16 +55,19 @@ export class VercelAiGatewayProvider implements ModelProvider {
   ): Promise<ModelGenerationResponse> {
     // Vercel-hosted production uses its deployment OIDC token. Local and
     // external runtimes may use a dedicated AI Gateway API key instead.
-    const useCloudflare = process.env.AI_PROVIDER?.trim() === 'cloudflare-workers-ai';
+    const providerMode = process.env.AI_PROVIDER?.trim() || 'vercel-ai-gateway';
+    const useCloudflare = providerMode === 'cloudflare-workers-ai';
+    const useOpenAiCompatible = providerMode === 'openai-compatible';
     const model = process.env.AI_MODEL?.trim();
     let authToken = useCloudflare
       ? process.env.CLOUDFLARE_API_TOKEN?.trim()
-      : process.env.AI_GATEWAY_API_KEY?.trim() ||
-        process.env.VERCEL_OIDC_TOKEN?.trim();
+      : useOpenAiCompatible
+        ? process.env.AI_INFERENCE_API_KEY?.trim()
+        : process.env.AI_GATEWAY_API_KEY?.trim() || process.env.VERCEL_OIDC_TOKEN?.trim();
 
     // Vercel Functions expose the current OIDC token in the request context,
     // not reliably as a process environment variable at runtime.
-    if (!useCloudflare && !authToken && process.env.VERCEL) {
+    if (!useCloudflare && !useOpenAiCompatible && !authToken && process.env.VERCEL) {
       try {
         authToken = await getVercelOidcToken();
       } catch {
@@ -73,11 +75,13 @@ export class VercelAiGatewayProvider implements ModelProvider {
       }
     }
 
-    if (!authToken || !model || (useCloudflare && !process.env.CLOUDFLARE_ACCOUNT_ID?.trim())) {
+    if ((!authToken && !useOpenAiCompatible) || !model || (useCloudflare && !process.env.CLOUDFLARE_ACCOUNT_ID?.trim()) || (useOpenAiCompatible && !process.env.AI_INFERENCE_BASE_URL?.trim())) {
       throw new ServiceUnavailableException(
         useCloudflare
           ? 'Cloudflare Workers AI requires CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID and AI_MODEL'
-          : 'AI Gateway provider requires a valid runtime OIDC token or AI_GATEWAY_API_KEY, plus AI_MODEL',
+          : useOpenAiCompatible
+            ? 'OpenAI-compatible inference requires AI_INFERENCE_BASE_URL and AI_MODEL'
+            : 'AI Gateway provider requires a valid runtime OIDC token or AI_GATEWAY_API_KEY, plus AI_MODEL',
       );
     }
 
@@ -125,14 +129,8 @@ export class VercelAiGatewayProvider implements ModelProvider {
         // pinning routing to Bedrock. Vercel OIDC / Token Pass credentials can
         // return HTTP 403 when providerOptions.gateway.only is specified.
         // Cloudflare Workers AI is called directly and does not accept this option.
-        ...(!useCloudflare
-          ? {
-              providerOptions: {
-                gateway: {
-                  zeroDataRetention: true,
-                },
-              },
-            }
+        ...(!useCloudflare && !useOpenAiCompatible
+          ? { providerOptions: { gateway: { zeroDataRetention: true } } }
           : {}),
       };
 
@@ -152,7 +150,7 @@ export class VercelAiGatewayProvider implements ModelProvider {
         {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${authToken}`,
+            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
             'Content-Type': 'application/json',
             'X-Correlation-ID': request.correlationId,
           },
@@ -383,9 +381,18 @@ export class VercelAiGatewayProvider implements ModelProvider {
       return `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1`;
     }
 
-    return (
-      process.env.AI_GATEWAY_BASE_URL ??
-      'https://ai-gateway.vercel.sh/v1'
-    ).replace(/\/$/, '');
+    if (process.env.AI_PROVIDER?.trim() === 'openai-compatible') {
+      const configured = process.env.AI_INFERENCE_BASE_URL?.trim();
+      if (!configured) throw new ServiceUnavailableException('AI_INFERENCE_BASE_URL is required');
+      let parsed: URL;
+      try { parsed = new URL(configured); } catch { throw new ServiceUnavailableException('AI_INFERENCE_BASE_URL must be a valid URL'); }
+      const localDevelopment = process.env.NODE_ENV !== 'production' && ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname);
+      if (parsed.protocol !== 'https:' && !(localDevelopment && parsed.protocol === 'http:')) {
+        throw new ServiceUnavailableException('Self-hosted inference must use HTTPS outside local development');
+      }
+      return configured.replace(/\\/$/, '');
+    }
+
+    return (process.env.AI_GATEWAY_BASE_URL ?? 'https://ai-gateway.vercel.sh/v1').replace(/\\/$/, '');
   }
 }
