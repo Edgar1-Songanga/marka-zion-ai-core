@@ -75,12 +75,12 @@ export class VercelAiGatewayProvider implements ModelProvider {
       }
     }
 
-    if ((!authToken && !useOpenAiCompatible) || !model || (useCloudflare && !process.env.CLOUDFLARE_ACCOUNT_ID?.trim()) || (useOpenAiCompatible && !process.env.AI_INFERENCE_BASE_URL?.trim())) {
+    if ((!authToken && (!useOpenAiCompatible || process.env.NODE_ENV === 'production')) || !model || (useCloudflare && !process.env.CLOUDFLARE_ACCOUNT_ID?.trim()) || (useOpenAiCompatible && !process.env.AI_INFERENCE_BASE_URL?.trim())) {
       throw new ServiceUnavailableException(
         useCloudflare
           ? 'Cloudflare Workers AI requires CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID and AI_MODEL'
           : useOpenAiCompatible
-            ? 'OpenAI-compatible inference requires AI_INFERENCE_BASE_URL and AI_MODEL'
+            ? 'OpenAI-compatible inference requires AI_INFERENCE_BASE_URL and AI_MODEL; production also requires AI_INFERENCE_API_KEY'
             : 'AI Gateway provider requires a valid runtime OIDC token or AI_GATEWAY_API_KEY, plus AI_MODEL',
       );
     }
