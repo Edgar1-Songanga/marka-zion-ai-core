@@ -65,7 +65,7 @@ export class CoreConfigService {
       ...(provider === 'cloudflare-workers-ai'
         ? ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID']
         : provider === 'openai-compatible'
-          ? ['AI_INFERENCE_BASE_URL']
+          ? ['AI_INFERENCE_BASE_URL', 'AI_INFERENCE_API_KEY']
           : []),
     ];
 
