@@ -390,9 +390,9 @@ export class VercelAiGatewayProvider implements ModelProvider {
       if (parsed.protocol !== 'https:' && !(localDevelopment && parsed.protocol === 'http:')) {
         throw new ServiceUnavailableException('Self-hosted inference must use HTTPS outside local development');
       }
-      return configured.replace(/\\/$/, '');
+      return configured.replace(/\/$/, '');
     }
 
-    return (process.env.AI_GATEWAY_BASE_URL ?? 'https://ai-gateway.vercel.sh/v1').replace(/\\/$/, '');
+    return (process.env.AI_GATEWAY_BASE_URL ?? 'https://ai-gateway.vercel.sh/v1').replace(/\/$/, '');
   }
 }
