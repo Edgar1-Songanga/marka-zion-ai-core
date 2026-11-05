@@ -63,6 +63,7 @@ export class AgentOrchestratorService {
       }));
 
     const provider = this.providers.resolve();
+    const privileged = request.context.accessLevel === 'OWNER';
     const pendingApprovals: string[] = [];
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
@@ -72,9 +73,11 @@ export class AgentOrchestratorService {
     for (let step = 1; step <= this.config.maxAgentSteps; step += 1) {
       const startedAt = Date.now();
 
-      await this.quotas.reserveRequest(request.context.tenantId!);
-      // Enforce a platform-wide ceiling across MARKA and ZION, not just per tenant.
-      await this.quotas.reserveRequest(PLATFORM_QUOTA_TENANT_ID);
+      if (!privileged) {
+        await this.quotas.reserveRequest(request.context.tenantId!);
+        // Enforce a platform-wide ceiling across standard MARKA and ZION requests.
+        await this.quotas.reserveRequest(PLATFORM_QUOTA_TENANT_ID);
+      }
 
       const remainingMs = deadlineAt - Date.now();
       if (remainingMs < 2500) {
@@ -96,16 +99,18 @@ export class AgentOrchestratorService {
         tools,
       });
 
-      await this.quotas.recordTokens(
-        request.context.tenantId!,
-        result.inputTokens,
-        result.outputTokens,
-      );
-      await this.quotas.recordTokens(
-        PLATFORM_QUOTA_TENANT_ID,
-        result.inputTokens,
-        result.outputTokens,
-      );
+      if (!privileged) {
+        await this.quotas.recordTokens(
+          request.context.tenantId!,
+          result.inputTokens,
+          result.outputTokens,
+        );
+        await this.quotas.recordTokens(
+          PLATFORM_QUOTA_TENANT_ID,
+          result.inputTokens,
+          result.outputTokens,
+        );
+      }
 
       totalInputTokens += result.inputTokens ?? 0;
       totalOutputTokens += result.outputTokens ?? 0;
