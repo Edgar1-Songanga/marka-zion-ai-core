@@ -92,6 +92,7 @@ Do not scrape sites that prohibit automation or bypass CAPTCHA, access controls,
 - Document data boundaries and user-confirmed execution policy.
 - Keep all provider connectors disabled until credentials, contracts and tests exist.
 - Expose a signed-context `POST /v1/travel/plan` intake endpoint that validates trip facts and rejects passport/MRZ/payment identifiers before model processing.
+- Select the five advisory-only travel specialists for each planning request and include their distinct review responsibilities in one coordinated model response.
 
 ### Phase 1 — Planning MVP
 - Collect trip details without requesting passport scans at first contact.
@@ -134,6 +135,7 @@ Implemented in the AI Core feature branch:
 
 Not yet implemented or verified:
 - Standalone web/mobile application and persistent traveller workspace.
+- Independent parallel execution of specialist agents; the first planning endpoint currently coordinates their perspectives in one model request.
 - Secure document vault and traveller/trip database.
 - Official visa-source retrieval and citation pipeline.
 - Flight, hotel, payment and consular provider integrations.
