@@ -9,6 +9,8 @@ import { KnowledgeModule } from '../knowledge/knowledge.module';
 import { ToolEngineModule } from '../tools/tool-engine.module';
 import { AiGatewayController } from './ai-gateway.controller';
 import { AiGatewayService } from './ai-gateway.service';
+import { GlobalTravelPlanningController } from '../travel/global-travel-planning.controller';
+import { GlobalTravelPlanningService } from '../travel/global-travel-planning.service';
 
 @Module({
   imports: [
@@ -21,8 +23,8 @@ import { AiGatewayService } from './ai-gateway.service';
     KnowledgeModule,
     ToolEngineModule,
   ],
-  controllers: [AiGatewayController],
-  providers: [AiGatewayService],
+  controllers: [AiGatewayController, GlobalTravelPlanningController],
+  providers: [AiGatewayService, GlobalTravelPlanningService],
   exports: [AiGatewayService],
 })
 export class AiGatewayModule {}

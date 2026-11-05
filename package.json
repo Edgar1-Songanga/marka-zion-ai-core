@@ -9,7 +9,8 @@
     "start": "node dist/src/main.js",
     "start:dev": "nest start --watch",
     "start:worker": "node dist/src/worker.js",
-    "db:migrate": "node dist/src/infrastructure/postgres/migrate.js"
+    "db:migrate": "node dist/src/infrastructure/postgres/migrate.js",
+    "test": "npm run build && node --test \"dist/src/**/*.spec.js\""
   },
   "dependencies": {
     "@nestjs/common": "^11.2.6",
