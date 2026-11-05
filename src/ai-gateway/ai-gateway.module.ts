@@ -10,6 +10,7 @@ import { ToolEngineModule } from '../tools/tool-engine.module';
 import { AiGatewayController } from './ai-gateway.controller';
 import { AiGatewayService } from './ai-gateway.service';
 import { GlobalTravelPlanningController } from '../travel/global-travel-planning.controller';
+import { GlobalTravelPlanningService } from '../travel/global-travel-planning.service';
 
 @Module({
   imports: [
@@ -23,7 +24,7 @@ import { GlobalTravelPlanningController } from '../travel/global-travel-planning
     ToolEngineModule,
   ],
   controllers: [AiGatewayController, GlobalTravelPlanningController],
-  providers: [AiGatewayService],
+  providers: [AiGatewayService, GlobalTravelPlanningService],
   exports: [AiGatewayService],
 })
 export class AiGatewayModule {}
