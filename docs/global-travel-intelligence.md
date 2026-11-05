@@ -91,6 +91,7 @@ Do not scrape sites that prohibit automation or bypass CAPTCHA, access controls,
 - Add advisory-only travel specialist agents.
 - Document data boundaries and user-confirmed execution policy.
 - Keep all provider connectors disabled until credentials, contracts and tests exist.
+- Expose a signed-context `POST /v1/travel/plan` intake endpoint that validates trip facts and rejects passport/MRZ/payment identifiers before model processing.
 
 ### Phase 1 — Planning MVP
 - Collect trip details without requesting passport scans at first contact.
@@ -132,7 +133,7 @@ Implemented in the AI Core feature branch:
 - Added five advisory-only travel specialist agents.
 
 Not yet implemented or verified:
-- Standalone web/mobile application.
+- Standalone web/mobile application and persistent traveller workspace.
 - Secure document vault and traveller/trip database.
 - Official visa-source retrieval and citation pipeline.
 - Flight, hotel, payment and consular provider integrations.
