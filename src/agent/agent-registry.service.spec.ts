@@ -1,3 +1,5 @@
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
 import { AgentRegistryService } from './agent-registry.service';
 
 describe('Global Travel specialist agents', () => {
@@ -10,15 +12,15 @@ describe('Global Travel specialist agents', () => {
       executionMode: 'ADVISORY',
     });
 
-    expect(agents.map((agent) => agent.id)).toContain('travel.visa-analyst');
+    assert.ok(agents.some((agent) => agent.id === 'travel.visa-analyst'));
   });
 
   it('keeps travel specialists in advisory mode only', () => {
     const travelAgents = registry.list().filter((agent) => agent.id.startsWith('travel.'));
 
-    expect(travelAgents.length).toBeGreaterThanOrEqual(5);
+    assert.ok(travelAgents.length >= 5);
     for (const agent of travelAgents) {
-      expect(agent.executionModes).toEqual(['ADVISORY']);
+      assert.deepEqual(agent.executionModes, ['ADVISORY']);
     }
   });
 
@@ -29,6 +31,6 @@ describe('Global Travel specialist agents', () => {
       executionMode: 'ADVISORY',
     });
 
-    expect(agents[0]?.id).toBe('travel.concierge');
+    assert.equal(agents[0]?.id, 'travel.concierge');
   });
 });
