@@ -1,5 +1,5 @@
 import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
+import * as assert from 'node:assert/strict';
 import { BadRequestException } from '@nestjs/common';
 import { GlobalTravelPlanningService } from './global-travel-planning.service';
 
