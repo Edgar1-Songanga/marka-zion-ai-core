@@ -111,7 +111,9 @@ export class AiGatewayService {
 
     const requestId = request.context.requestId ?? randomUUID();
 
-    await this.quotas.reserveRequest(request.context.tenantId!);
+    if (request.context.accessLevel !== 'OWNER') {
+      await this.quotas.reserveRequest(request.context.tenantId!);
+    }
     await this.audit.recordAccepted(request, requestId);
 
     let envelope: AiToolCallEnvelope;
@@ -170,7 +172,9 @@ export class AiGatewayService {
 
     const requestId = request.context.requestId ?? randomUUID();
 
-    await this.quotas.reserveRequest(request.context.tenantId!);
+    if (request.context.accessLevel !== 'OWNER') {
+      await this.quotas.reserveRequest(request.context.tenantId!);
+    }
     await this.audit.recordAccepted(request, requestId);
 
     const documents = await this.knowledge.search({
