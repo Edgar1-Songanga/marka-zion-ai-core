@@ -71,7 +71,7 @@ export class AiGatewayService {
           ...request,
           systemInstruction: [request.systemInstruction, GLOBAL_TRAVEL_SYSTEM_POLICY]
             .filter((instruction): instruction is string => Boolean(instruction?.trim()))
-            .join('\\n\\n'),
+            .join('\n\n'),
         }
       : request;
 
