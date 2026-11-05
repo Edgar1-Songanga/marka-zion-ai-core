@@ -5,6 +5,8 @@ import {
 import { HttpsProductConnector } from './https-product-connector';
 import { ProductConnectorRegistry } from './product-connector.registry';
 
+type ConnectorSpace = 'zion' | 'marka' | 'global-travel';
+
 @Injectable()
 export class ConfiguredConnectorBootstrap implements OnModuleInit {
   constructor(private readonly registry: ProductConnectorRegistry) {}
@@ -12,10 +14,11 @@ export class ConfiguredConnectorBootstrap implements OnModuleInit {
   onModuleInit(): void {
     this.configure('zion');
     this.configure('marka');
+    this.configure('global-travel');
   }
 
-  private configure(spaceId: 'zion' | 'marka'): void {
-    const prefix = spaceId.toUpperCase();
+  private configure(spaceId: ConnectorSpace): void {
+    const prefix = spaceId.toUpperCase().replace(/-/g, '_');
     const enabled = process.env[`AI_${prefix}_CONNECTOR_ENABLED`] === 'true';
 
     if (!enabled) {
