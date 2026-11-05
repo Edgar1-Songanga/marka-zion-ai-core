@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { AgentDefinition } from '../agent/agent.types';
 
 export interface GlobalTravelIntake {
   readonly origin?: string;
@@ -132,13 +133,15 @@ export class GlobalTravelPlanningService {
     };
   }
 
-  toPrompt(trip: GlobalTravelIntake): string {
+  toPrompt(trip: GlobalTravelIntake, specialists: readonly AgentDefinition[] = []): string {
     return [
       `Prepare a practical international travel plan using only the information below. Respond in the preferred language: ${trip.preferredLanguage}.`,
       'If passport expiry is supplied, verify destination and transit rules; do not assume one universal passport-validity threshold.',
       'Return clear sections for entry/visa assessment, official-source checks, missing facts, documents checklist, transport/accommodation research requirements, itinerary outline, budget assumptions and next actions.',
       'Do not claim that live availability or official requirements were checked unless tools and evidence actually supplied them.',
       'Do not request passport numbers, scans, MRZ strings or payment details.',
+      'Use the following specialist lenses to structure the analysis. These are coordinated perspectives within this planning request, not proof that external research or separate provider calls occurred:',
+      ...specialists.map((agent) => `- ${agent.name}: ${agent.description}`),
       'Trip intake:',
       JSON.stringify(trip, null, 2),
     ].join('\n\n');
