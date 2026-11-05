@@ -24,6 +24,12 @@ export class SpaceRegistryService implements OnModuleInit {
       status: 'ACTIVE',
       capabilities: ['knowledge', 'memory', 'tools'],
     }],
+    ['global-travel', {
+      id: 'global-travel',
+      displayName: 'Global Travel Intelligence',
+      status: 'ACTIVE',
+      capabilities: ['knowledge', 'memory', 'planning', 'tools', 'human-approval'],
+    }],
   ]);
 
   constructor(private readonly db: PostgresService) {}
@@ -32,14 +38,19 @@ export class SpaceRegistryService implements OnModuleInit {
     if (!process.env.DATABASE_URL) return;
 
     try {
+      const capabilities = JSON.stringify(['knowledge', 'memory', 'tools']);
       await this.db.query(
         `INSERT INTO ai_product_spaces
           (id, display_name, status, capabilities)
          VALUES
           ('zion', 'ZION', 'ACTIVE', $1),
-          ('marka', 'MARKA', 'ACTIVE', $1)
+          ('marka', 'MARKA', 'ACTIVE', $1),
+          ('global-travel', 'Global Travel Intelligence', 'ACTIVE', $2)
          ON CONFLICT (id) DO NOTHING`,
-        [JSON.stringify(['knowledge', 'memory', 'tools'])],
+        [
+          capabilities,
+          JSON.stringify(['knowledge', 'memory', 'planning', 'tools', 'human-approval']),
+        ],
       );
 
       const result = await this.db.query<SpaceRow>(
