@@ -8,6 +8,7 @@ export interface GlobalTravelIntake {
   readonly purpose: string;
   readonly departureDate?: string;
   readonly returnDate?: string;
+  readonly passportExpiryDate?: string;
   readonly travellers: number;
   readonly budgetAmount?: number;
   readonly budgetCurrency?: string;
@@ -23,6 +24,7 @@ const ALLOWED_FIELDS = new Set([
   'purpose',
   'departureDate',
   'returnDate',
+  'passportExpiryDate',
   'travellers',
   'budgetAmount',
   'budgetCurrency',
@@ -71,6 +73,7 @@ export class GlobalTravelPlanningService {
 
     const departureDate = optionalDate(data.departureDate, 'departureDate');
     const returnDate = optionalDate(data.returnDate, 'returnDate');
+    const passportExpiryDate = optionalDate(data.passportExpiryDate, 'passportExpiryDate');
     if (departureDate && returnDate && returnDate < departureDate) {
       throw new BadRequestException('returnDate must be on or after departureDate');
     }
@@ -97,7 +100,13 @@ export class GlobalTravelPlanningService {
     const tripDescription = data.tripDescription === undefined
       ? undefined
       : requiredText(data.tripDescription, 'tripDescription', 2000);
-    if (tripDescription && (/[A-Z0-9<]{25,}/i.test(tripDescription) || /passport\\s*(number|no\\.?|#)|document\\s*(number|no\\.?)/i.test(tripDescription))) {
+    const containsMrz = tripDescription?.split(/\\r?\\n/).some((line) => /^[A-Z0-9<]{25,}$/.test(line.trim())) ?? false;
+    const containsSensitiveIdentifier = tripDescription !== undefined && (
+      /\\bpassport\\s*(?:number|no\\.?|#)\\s*[:#-]?\\s*[A-Z0-9-]{5,}/i.test(tripDescription)
+      || /\\b(?:national\\s+)?id\\s*(?:number|no\\.?|#)\\s*[:#-]?\\s*[A-Z0-9-]{5,}/i.test(tripDescription)
+      || /(?:\\d[ -]?){13,19}/.test(tripDescription)
+    );
+    if (containsMrz || containsSensitiveIdentifier) {
       throw new BadRequestException('Do not include passport, MRZ, identity or payment-card data in tripDescription.');
     }
 
@@ -109,6 +118,7 @@ export class GlobalTravelPlanningService {
       purpose: requiredText(data.purpose, 'purpose'),
       departureDate,
       returnDate,
+      passportExpiryDate,
       travellers,
       budgetAmount,
       budgetCurrency,
