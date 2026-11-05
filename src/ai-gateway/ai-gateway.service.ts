@@ -13,6 +13,7 @@ import {
 } from '../tools/tool-execution.service';
 import { ModelProviderRegistry } from '../model-layer/model-provider.registry';
 import { ModelGenerationResponse } from '../model-layer/model-provider.types';
+import { GLOBAL_TRAVEL_SYSTEM_POLICY } from '../travel/global-travel-system-policy';
 
 export interface AiToolCallEnvelope {
   readonly toolName: string;
@@ -65,10 +66,19 @@ export class AiGatewayService {
     const requestId = request.context.requestId ?? randomUUID();
     await this.audit.recordAccepted(request, requestId);
 
+    const effectiveRequest = request.space === 'global-travel'
+      ? {
+          ...request,
+          systemInstruction: [request.systemInstruction, GLOBAL_TRAVEL_SYSTEM_POLICY]
+            .filter((instruction): instruction is string => Boolean(instruction?.trim()))
+            .join('\\n\\n'),
+        }
+      : request;
+
     let result;
     try {
       result = await this.agent.run({
-        ...request,
+        ...effectiveRequest,
         context: {
           ...request.context,
           requestId,
