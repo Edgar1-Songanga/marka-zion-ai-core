@@ -76,3 +76,10 @@ Copy `.env.example` to the deployment environment. In production, `AI_CORE_API_K
 - Production HTTP hardening, readiness checks and Node 22 CI build gate.
 
 The core is designed to be reusable by ZION, MARKA and future products without changing its public architecture. Product-specific truth remains outside the AI Core.
+
+
+## Privileged quota policy
+
+Standard signed product contexts remain subject to per-tenant and platform-wide request/token quotas. A signed context with `accessLevel: OWNER` is exempt from those usage quotas only when its issuer is explicitly listed in `AI_OWNER_CONTEXT_ISSUERS`. The default example allows `platform-identity` and `marka-api`; production configuration must be updated deliberately to match the trusted issuers actually deployed.
+
+Owner context is never accepted from request-body fields. It is derived from the HMAC-signed product context and verified against the allowlisted issuer. Usage audit events continue to be written for owner requests. Sensitive writes still require the existing human approval workflow; OWNER does not disable that control.
