@@ -77,6 +77,9 @@ export class GlobalTravelPlanningService {
     if (departureDate && returnDate && returnDate < departureDate) {
       throw new BadRequestException('returnDate must be on or after departureDate');
     }
+    if (departureDate && passportExpiryDate && passportExpiryDate <= departureDate) {
+      throw new BadRequestException('passportExpiryDate must be after departureDate');
+    }
 
     const travellers = data.travellers === undefined ? 1 : Number(data.travellers);
     if (!Number.isInteger(travellers) || travellers < 1 || travellers > 20) {
@@ -131,7 +134,8 @@ export class GlobalTravelPlanningService {
 
   toPrompt(trip: GlobalTravelIntake): string {
     return [
-      'Prepare a practical international travel plan using only the information below.',
+      `Prepare a practical international travel plan using only the information below. Respond in the preferred language: ${trip.preferredLanguage}.`,
+      'If passport expiry is supplied, verify destination and transit rules; do not assume one universal passport-validity threshold.',
       'Return clear sections for entry/visa assessment, official-source checks, missing facts, documents checklist, transport/accommodation research requirements, itinerary outline, budget assumptions and next actions.',
       'Do not claim that live availability or official requirements were checked unless tools and evidence actually supplied them.',
       'Do not request passport numbers, scans, MRZ strings or payment details.',
