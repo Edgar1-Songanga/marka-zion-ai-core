@@ -44,7 +44,7 @@ function requiredText(value: unknown, field: string, max = 120): string {
 
 function optionalDate(value: unknown, field: string): string | undefined {
   if (value === undefined || value === null || value === '') return undefined;
-  if (typeof value !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     throw new BadRequestException(`${field} must use YYYY-MM-DD`);
   }
   const date = new Date(`${value}T00:00:00.000Z`);
@@ -100,11 +100,11 @@ export class GlobalTravelPlanningService {
     const tripDescription = data.tripDescription === undefined
       ? undefined
       : requiredText(data.tripDescription, 'tripDescription', 2000);
-    const containsMrz = tripDescription?.split(/\\r?\\n/).some((line) => /^[A-Z0-9<]{25,}$/.test(line.trim())) ?? false;
+    const containsMrz = tripDescription?.split(/\r?\n/).some((line) => /^[A-Z0-9<]{25,}$/.test(line.trim())) ?? false;
     const containsSensitiveIdentifier = tripDescription !== undefined && (
-      /\\bpassport\\s*(?:number|no\\.?|#)\\s*[:#-]?\\s*[A-Z0-9-]{5,}/i.test(tripDescription)
-      || /\\b(?:national\\s+)?id\\s*(?:number|no\\.?|#)\\s*[:#-]?\\s*[A-Z0-9-]{5,}/i.test(tripDescription)
-      || /(?:\\d[ -]?){13,19}/.test(tripDescription)
+      /\bpassport\s*(?:number|no\.?|#)\s*[:#-]?\s*[A-Z0-9-]{5,}/i.test(tripDescription)
+      || /\b(?:national\s+)?id\s*(?:number|no\.?|#)\s*[:#-]?\s*[A-Z0-9-]{5,}/i.test(tripDescription)
+      || /(?:\d[ -]?){13,19}/.test(tripDescription)
     );
     if (containsMrz || containsSensitiveIdentifier) {
       throw new BadRequestException('Do not include passport, MRZ, identity or payment-card data in tripDescription.');
@@ -137,6 +137,6 @@ export class GlobalTravelPlanningService {
       'Do not request passport numbers, scans, MRZ strings or payment details.',
       'Trip intake:',
       JSON.stringify(trip, null, 2),
-    ].join('\\n\\n');
+    ].join('\n\n');
   }
 }
