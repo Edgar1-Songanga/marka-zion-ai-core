@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { AgentDefinition } from '../agent/agent.types';
+import type { AgentDefinition } from '../agent/agent.types';
 
 export interface GlobalTravelIntake {
   readonly origin?: string;
