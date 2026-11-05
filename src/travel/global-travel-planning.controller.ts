@@ -13,6 +13,7 @@ import { AiGatewayService } from '../ai-gateway/ai-gateway.service';
 import { AiAuthenticatedContext } from '../core/security/ai-authenticated-context';
 import { AiApiKeyGuard } from '../core/security/ai-api-key.guard';
 import { GlobalTravelPlanningService } from './global-travel-planning.service';
+import { AgentRegistryService } from '../agent/agent-registry.service';
 
 interface AuthenticatedRequest {
   aiContext?: AiAuthenticatedContext;
@@ -24,6 +25,7 @@ export class GlobalTravelPlanningController {
   constructor(
     private readonly gateway: AiGatewayService,
     private readonly planning: GlobalTravelPlanningService,
+    private readonly agents: AgentRegistryService,
   ) {}
 
   @Post('plan')
@@ -41,10 +43,22 @@ export class GlobalTravelPlanningController {
     }
 
     const intake = this.planning.normalize(body);
-    return this.gateway.generate({
+    const specialists = this.agents.select({
+      requiredSkills: [
+        'travel-planning',
+        'visa-research',
+        'flight-search',
+        'hotel-search',
+        'travel-risk',
+      ],
+      accessLevel: 'STANDARD',
+      executionMode: 'ADVISORY',
+      limit: 5,
+    });
+    const result = await this.gateway.generate({
       space: 'global-travel',
       operation: 'CHAT',
-      input: this.planning.toPrompt(intake),
+      input: this.planning.toPrompt(intake, specialists),
       context: {
         correlationId: correlationId?.trim() || randomUUID(),
         userId: context.userId,
@@ -53,5 +67,14 @@ export class GlobalTravelPlanningController {
         accessLevel: context.accessLevel,
       },
     });
+
+    return {
+      ...result,
+      specialistLenses: specialists.map((agent) => ({
+        id: agent.id,
+        name: agent.name,
+        responsibility: agent.description,
+      })),
+    };
   }
 }
