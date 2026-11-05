@@ -73,6 +73,7 @@ describe('GlobalTravelPlanningService', () => {
     };
     assert.throws(() => service.normalize({ ...base, departureDate: '2027-02-30' }), BadRequestException);
     assert.throws(() => service.normalize({ ...base, departureDate: '2027-03-20', returnDate: '2027-03-10' }), BadRequestException);
+    assert.throws(() => service.normalize({ ...base, departureDate: '2027-03-20', passportExpiryDate: '2027-03-19' }), BadRequestException);
     assert.throws(() => service.normalize({ ...base, travellers: 21 }), BadRequestException);
   });
 
@@ -86,6 +87,7 @@ describe('GlobalTravelPlanningService', () => {
     const prompt = service.toPrompt(trip);
 
     assert.match(prompt, /official-source checks/);
+    assert.match(prompt, /Respond in the preferred language: en/);
     assert.match(prompt, /Lisbon/);
     assert.match(prompt, /Do not request passport numbers/);
   });
